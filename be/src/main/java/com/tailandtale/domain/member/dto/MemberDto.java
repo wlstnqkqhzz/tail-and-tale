@@ -1,0 +1,72 @@
+package com.tailandtale.domain.member.dto;
+
+// 회원 요청 및 응답 DTO 정의 클래스
+
+import com.tailandtale.domain.member.entity.Member;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+public class MemberDto {
+
+    // 회원가입 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class SignupRequest {
+
+        private String email;
+        private String password;
+
+        private String realName;
+        private String nickname;
+
+        private String phoneNumber;
+        private String region;
+        private String introduction;
+    }
+
+    // 회원 정보 응답 DTO
+    @Getter
+    @Builder
+    public static class DetailResponse {
+
+        private Long memberId;
+        private String email;
+        private String realName;
+        private String nickname;
+        private String profileImageUrl;
+        private String phoneNumber;
+        private String region;
+        private String introduction;
+        private Boolean isRealNameVerified;
+        private String role;
+        private String status;
+
+        public static DetailResponse from(Member member) {
+            return DetailResponse.builder()
+                    .memberId(member.getId())
+                    .email(member.getEmail())
+                    .realName(member.getRealName())
+                    .nickname(member.getNickname())
+                    .profileImageUrl(member.getProfileImageUrl())
+                    .phoneNumber(member.getPhoneNumber())
+                    .region(member.getRegion())
+                    .introduction(member.getIntroduction())
+                    .isRealNameVerified(member.getIsRealNameVerified())
+                    .role(member.getRole().name())
+                    .status(member.getStatus().name())
+                    .build();
+        }
+    }
+
+    // 회원 수정 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class UpdateRequest {
+
+        private String nickname;
+        private String phoneNumber;
+        private String region;
+        private String introduction;
+    }
+}
