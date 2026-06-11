@@ -1,6 +1,54 @@
+server:
+  port: 8000
+
 spring:
   application:
     name: BE
 
   profiles:
-      active: local
+    active: local
+
+  # ==========================================================================
+  # 1. DB
+  # ==========================================================================
+  datasource:
+    url: ${app.datasource.url}
+    username: ${app.datasource.username}
+    password: ${app.datasource.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # ==========================================================================
+  # 2. JPA
+  # ==========================================================================
+  jpa:
+    hibernate:
+      ddl-auto: ${app.jpa.ddl-auto}
+
+    show-sql: ${app.jpa.show-sql}
+
+    properties:
+      hibernate:
+        format_sql: ${app.jpa.format-sql}
+
+  # ==========================================================================
+  # 3. OAuth2
+  # ==========================================================================
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${app.oauth.google.client-id}
+            client-secret: ${app.oauth.google.client-secret}
+            scope:
+              - email
+              - profile
+
+# ==========================================================================
+# 4. JWT
+# ==========================================================================
+jwt:
+  access-secret: ${app.jwt.access-secret}
+  refresh-secret: ${app.jwt.refresh-secret}
+  access-token-expiration: ${app.jwt.access-token-expiration}
+  refresh-token-expiration: ${app.jwt.refresh-token-expiration}

@@ -32,10 +32,10 @@ public class Member extends BaseEntity {
     @Column(length = 255)
     private String password;
 
-    @Column(name = "real_name", nullable = false, length = 50)
+    @Column(name = "real_name", length = 50)
     private String realName;
 
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(unique = true, length = 30)
     private String nickname;
 
     @Column(name = "profile_image_url", length = 500)
@@ -90,7 +90,8 @@ public class Member extends BaseEntity {
             String profileImageUrl,
             String phoneNumber,
             String region,
-            String introduction
+            String introduction,
+            MemberStatus status
     ) {
         this.email = email;
         this.password = password;
@@ -102,7 +103,7 @@ public class Member extends BaseEntity {
         this.introduction = introduction;
         this.isRealNameVerified = false;
         this.role = MemberRole.USER;
-        this.status = MemberStatus.ACTIVE;
+        this.status = status != null ? status : MemberStatus.ACTIVE;
     }
 
     // =========================
@@ -120,6 +121,22 @@ public class Member extends BaseEntity {
         this.phoneNumber = phoneNumber;
         this.region = region;
         this.introduction = introduction;
+    }
+
+    // OAuth 추가 정보 입력 완료
+    public void completeProfile(
+            String realName,
+            String nickname,
+            String phoneNumber,
+            String region,
+            String introduction
+    ) {
+        this.realName = realName;
+        this.nickname = nickname;
+        this.phoneNumber = phoneNumber;
+        this.region = region;
+        this.introduction = introduction;
+        this.status = MemberStatus.ACTIVE;
     }
 
     // =========================

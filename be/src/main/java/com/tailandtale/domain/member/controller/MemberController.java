@@ -36,6 +36,16 @@ public class MemberController {
         return ResponseEntity.ok(memberService.getMember(memberId));
     }
 
+    // OAuth 추가 정보 입력 완료
+    @PatchMapping("/me/profile/complete")
+    public ResponseEntity<MemberDto.DetailResponse> completeProfile(@Valid @RequestBody MemberDto.CompleteProfileRequest request) {
+        Long memberId = (Long) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        return ResponseEntity.ok(memberService.completeProfile(memberId, request));
+    }
+
     // 내 정보 조회
     @GetMapping("/me")
     public ResponseEntity<MemberDto.DetailResponse> getMyInfo() {

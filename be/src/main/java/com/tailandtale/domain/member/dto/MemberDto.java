@@ -3,6 +3,7 @@ package com.tailandtale.domain.member.dto;
 // 회원 요청 및 응답 DTO 정의 클래스
 
 import com.tailandtale.domain.member.entity.Member;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -65,6 +66,22 @@ public class MemberDto {
     public static class UpdateRequest {
 
         private String nickname;
+        private String phoneNumber;
+        private String region;
+        private String introduction;
+    }
+
+    // OAuth 추가 정보 입력 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class CompleteProfileRequest {
+
+        @NotBlank(message = "실명은 필수입니다.")
+        private String realName;
+
+        @NotBlank(message = "닉네임은 필수입니다.")
+        private String nickname;
+
         private String phoneNumber;
         private String region;
         private String introduction;

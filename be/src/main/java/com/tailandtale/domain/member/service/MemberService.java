@@ -89,6 +89,29 @@ public class MemberService {
         return MemberDto.DetailResponse.from(member);
     }
 
+    // OAuth 추가 정보 입력 완료
+    @Transactional
+    public MemberDto.DetailResponse completeProfile(Long memberId, MemberDto.CompleteProfileRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        memberRepository.findByNickname(request.getNickname())
+                .filter(foundMember -> !foundMember.getId().equals(memberId))
+                .ifPresent(foundMember -> {
+                    throw new CustomException(MemberErrorCode.DUPLICATE_NICKNAME);
+                });
+
+        member.completeProfile(
+                request.getRealName(),
+                request.getNickname(),
+                request.getPhoneNumber(),
+                request.getRegion(),
+                request.getIntroduction()
+        );
+
+        return MemberDto.DetailResponse.from(member);
+    }
+
     // Refresh Token 재발급
     @Transactional
     public LoginFormDto.TokenResponse reissue(LoginFormDto.ReissueRequest request) {

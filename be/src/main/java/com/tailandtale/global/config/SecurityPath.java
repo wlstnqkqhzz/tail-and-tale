@@ -12,6 +12,8 @@ public final class SecurityPath {
             "/api/members/check-email",
             "/api/members/check-nickname",
             "/api/members/reissue",
-            "/api/members/logout"
+            "/api/members/logout",
+            "/oauth2/**",
+            "/login/oauth2/**"
     };
 }
