@@ -1,9 +1,19 @@
 import axios from "axios";
 
-// 공통 axios 인스턴스 생성
+// Axios 공통 설정
+
 const api = axios.create({
-    baseURL: "http://localhost:8080",
-    withCredentials: true,
+    baseURL: import.meta.env.VITE_API_BASE_URL,
+});
+
+api.interceptors.request.use((config) => {
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    return config;
 });
 
 export default api;
