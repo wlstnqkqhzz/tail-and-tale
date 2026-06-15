@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 // 반려견 Entity
 
@@ -62,6 +63,18 @@ public class Dog extends BaseEntity {
     // 프로필 이미지 URL
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
+
+    // 동물등록번호
+    @Column(name = "animal_registration_number", length = 50, unique = true)
+    private String animalRegistrationNumber;
+
+    // 반려견 인증 여부
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified = false;
+
+    // 반려견 인증 완료일
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
 
     // 중성화 여부
     @Column(name = "is_neutered", nullable = false)
@@ -170,5 +183,12 @@ public class Dog extends BaseEntity {
         if (note != null) {
             this.note = note;
         }
+    }
+
+    // 반려견 인증 완료
+    public void verify(String animalRegistrationNumber) {
+        this.animalRegistrationNumber = animalRegistrationNumber;
+        this.isVerified = true;
+        this.verifiedAt = LocalDateTime.now();
     }
 }

@@ -1,17 +1,28 @@
 // 공통 헤더 컴포넌트
 
+import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../../utils/auth";
 import { useAuth } from "../../hooks/useAuth";
 import { useDropdown } from "../../hooks/useDropdown";
 
 export default function Header({ onLoginClick }) {
+    const navigate = useNavigate();
     const { isLoading, isLoggedIn, member } = useAuth();
     const { isOpen: isDropdownOpen, setIsOpen: setIsDropdownOpen, dropdownRef,} = useDropdown();
+
+    // 페이지 이동
+    const movePage = (path) => {
+        setIsDropdownOpen(false);
+        navigate(path);
+    };
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-gray-100 bg-white">
             <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-8">
-                <div className="cursor-pointer text-2xl font-bold">
+                <div
+                    onClick={() => navigate("/")}
+                    className="cursor-pointer text-2xl font-bold"
+                >
                     Tail & Tale
                 </div>
 
@@ -35,11 +46,17 @@ export default function Header({ onLoginClick }) {
 
                             {isDropdownOpen && (
                                 <div className="absolute right-0 mt-3 w-44 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl animate-[dropdownFadeIn_0.15s_ease-out]">
-                                    <button className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50">
+                                    <button
+                                        onClick={() => movePage("/profile-complete")}
+                                        className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
+                                    >
                                         마이페이지
                                     </button>
 
-                                    <button className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50">
+                                    <button
+                                        onClick={() => movePage("/dogs")}
+                                        className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
+                                    >
                                         내 반려견
                                     </button>
 

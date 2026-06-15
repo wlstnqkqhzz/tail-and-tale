@@ -87,3 +87,12 @@ jwt:
 # ==========================================================================
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  animal-registration:
+    enabled: ${ANIMAL_REGISTRATION_API_ENABLED:false}
+    api-url: ${ANIMAL_REGISTRATION_API_URL:http://apis.data.go.kr/1543061/animalInfoSrvc_v3/animalInfo_v3}
+    service-key: ${ANIMAL_REGISTRATION_API_SERVICE_KEY:}
+    service-key-param: ${ANIMAL_REGISTRATION_API_SERVICE_KEY_PARAM:serviceKey}
+    registration-number-param: ${ANIMAL_REGISTRATION_API_REGISTRATION_NUMBER_PARAM:dog_reg_no}
+    owner-name-param: ${ANIMAL_REGISTRATION_API_OWNER_NAME_PARAM:owner_nm}
+    response-type-param: ${ANIMAL_REGISTRATION_API_RESPONSE_TYPE_PARAM:_type}
+    response-type: ${ANIMAL_REGISTRATION_API_RESPONSE_TYPE:json}

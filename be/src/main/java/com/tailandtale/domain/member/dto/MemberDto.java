@@ -15,14 +15,25 @@ public class MemberDto {
     @NoArgsConstructor
     public static class SignupRequest {
 
+        @NotBlank(message = "이메일은 필수입니다.")
         private String email;
+
+        @NotBlank(message = "비밀번호는 필수입니다.")
         private String password;
 
+        @NotBlank(message = "실명은 필수입니다.")
         private String realName;
+
+        @NotBlank(message = "닉네임은 필수입니다.")
         private String nickname;
 
+        @NotBlank(message = "전화번호는 필수입니다.")
         private String phoneNumber;
+
+        @NotBlank(message = "거주 지역은 필수입니다.")
         private String region;
+
+        @NotBlank(message = "자기소개는 필수입니다.")
         private String introduction;
     }
 

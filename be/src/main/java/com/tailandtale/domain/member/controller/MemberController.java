@@ -25,7 +25,7 @@ public class MemberController {
 
     // 회원가입
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody MemberDto.SignupRequest signupRequest) {
+    public ResponseEntity<Void> signup(@Valid @RequestBody MemberDto.SignupRequest signupRequest) {
         memberService.signup(signupRequest);
         return ResponseEntity.ok().build();
     }

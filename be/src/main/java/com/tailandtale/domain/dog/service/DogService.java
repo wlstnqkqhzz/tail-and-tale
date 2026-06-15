@@ -5,6 +5,7 @@ import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.global.animal.AnimalRegistrationClient;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
 import com.tailandtale.global.exception.MemberErrorCode;
@@ -22,6 +23,7 @@ import java.util.List;
 public class DogService {
     private final DogRepository dogRepository;
     private final MemberRepository memberRepository;
+    private final AnimalRegistrationClient animalRegistrationClient;
 
     // 반려견 등록
     @Transactional
@@ -91,6 +93,25 @@ public class DogService {
         Dog dog = getDogByMember(memberId, dogId);
 
         dogRepository.delete(dog);
+    }
+
+    // 반려견 인증
+    @Transactional
+    public DogDto.DetailResponse verifyDog(Long memberId, Long dogId, DogDto.VerifyRequest request) {
+        Dog dog = getDogByMember(memberId, dogId);
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+        String animalRegistrationNumber = request.getAnimalRegistrationNumber().trim();
+
+        boolean verified = animalRegistrationClient.verify(animalRegistrationNumber, member.getRealName());
+
+        if (!verified) {
+            throw new CustomException(DogErrorCode.DOG_VERIFICATION_FAILED);
+        }
+
+        dog.verify(animalRegistrationNumber);
+
+        return DogDto.DetailResponse.from(dog);
     }
 
     // 회원 소유 반려견 조회

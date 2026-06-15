@@ -63,6 +63,17 @@ public class DogController {
         return ResponseEntity.noContent().build();
     }
 
+    // 반려견 인증
+    @PostMapping("/{dogId}/verify")
+    public ResponseEntity<DogDto.DetailResponse> verifyDog(
+            @PathVariable Long dogId,
+            @Valid @RequestBody DogDto.VerifyRequest request
+    ) {
+        Long memberId = getLoginMemberId();
+
+        return ResponseEntity.ok(dogService.verifyDog(memberId, dogId, request));
+    }
+
     // 로그인 회원 ID 조회
     private Long getLoginMemberId() {
         return (Long) SecurityContextHolder.getContext()
