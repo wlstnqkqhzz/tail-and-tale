@@ -87,13 +87,31 @@ public class AnimalRegistrationClient {
         }
 
         Integer totalCount = extractTotalCount(responseBody);
+        boolean hasRegistrationNumber = containsRegistrationNumber(responseBody, animalRegistrationNumber);
 
         if (totalCount != null) {
-            return totalCount > 0;
+            return totalCount > 0 && hasRegistrationNumber;
         }
 
-        // totalCount가 없는 응답은 실제 등록번호가 응답 본문에 포함된 경우에만 성공으로 본다.
-        return responseBody.contains(animalRegistrationNumber);
+        return false;
+    }
+
+    // 응답 본문에 입력한 동물등록번호가 실제로 포함되어 있는지 확인
+    private boolean containsRegistrationNumber(String responseBody, String animalRegistrationNumber) {
+        String normalizedResponseBody = normalizeRegistrationNumber(responseBody);
+        String normalizedRegistrationNumber = normalizeRegistrationNumber(animalRegistrationNumber);
+
+        return StringUtils.hasText(normalizedRegistrationNumber)
+                && normalizedResponseBody.contains(normalizedRegistrationNumber);
+    }
+
+    // 동물등록번호 비교를 위해 공백과 구분문자 제거
+    private String normalizeRegistrationNumber(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+
+        return value.replaceAll("[^0-9A-Za-z]", "");
     }
 
     // 전체 결과 수 추출
