@@ -1,7 +1,5 @@
 package com.tailandtale.domain.dog.dto;
 
-// 반려견 요청 및 응답 DTO 정의 클래스
-
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.entity.DogGender;
 import com.tailandtale.domain.dog.entity.DogSize;
@@ -18,6 +16,8 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+// 반려견 요청 및 응답 DTO 정의 클래스
 
 public class DogDto {
 

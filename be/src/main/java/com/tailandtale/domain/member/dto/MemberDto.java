@@ -1,12 +1,12 @@
 package com.tailandtale.domain.member.dto;
 
-// 회원 요청 및 응답 DTO 정의 클래스
-
 import com.tailandtale.domain.member.entity.Member;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+// 회원 요청 및 응답 DTO 정의 클래스
 
 public class MemberDto {
 

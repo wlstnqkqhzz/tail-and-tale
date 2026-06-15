@@ -44,10 +44,7 @@ public class DogController {
 
     // 반려견 정보 수정
     @PatchMapping("/{dogId}")
-    public ResponseEntity<DogDto.DetailResponse> updateDog(
-            @PathVariable Long dogId,
-            @Valid @RequestBody DogDto.UpdateRequest request
-    ) {
+    public ResponseEntity<DogDto.DetailResponse> updateDog(@PathVariable Long dogId, @Valid @RequestBody DogDto.UpdateRequest request) {
         Long memberId = getLoginMemberId();
 
         return ResponseEntity.ok(dogService.updateDog(memberId, dogId, request));
@@ -65,10 +62,7 @@ public class DogController {
 
     // 반려견 인증
     @PostMapping("/{dogId}/verify")
-    public ResponseEntity<DogDto.DetailResponse> verifyDog(
-            @PathVariable Long dogId,
-            @Valid @RequestBody DogDto.VerifyRequest request
-    ) {
+    public ResponseEntity<DogDto.DetailResponse> verifyDog(@PathVariable Long dogId, @Valid @RequestBody DogDto.VerifyRequest request) {
         Long memberId = getLoginMemberId();
 
         return ResponseEntity.ok(dogService.verifyDog(memberId, dogId, request));

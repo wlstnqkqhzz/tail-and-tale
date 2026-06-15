@@ -14,6 +14,7 @@ public final class SecurityPath {
             "/api/members/reissue",
             "/api/members/logout",
             "/oauth2/**",
-            "/login/oauth2/**"
+            "/login/oauth2/**",
+            "/error"
     };
 }
