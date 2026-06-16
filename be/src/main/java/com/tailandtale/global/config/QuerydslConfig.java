@@ -1,0 +1,18 @@
+package com.tailandtale.global.config;
+
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+// QueryDSL 설정 클래스
+
+@Configuration
+public class QuerydslConfig {
+
+    // QueryDSL JPAQueryFactory Bean
+    @Bean
+    public JPAQueryFactory jpaQueryFactory(EntityManager entityManager) {
+        return new JPAQueryFactory(entityManager);
+    }
+}

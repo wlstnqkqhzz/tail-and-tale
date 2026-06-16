@@ -57,13 +57,25 @@ public class WalkScheduleController {
     // 산책 일정 상세 조회
     @GetMapping("/{walkScheduleId}")
     public ResponseEntity<WalkScheduleDto.DetailResponse> getSchedule(@PathVariable Long walkScheduleId) {
-        return ResponseEntity.ok(walkScheduleService.getSchedule(walkScheduleId));
+        return ResponseEntity.ok(
+                walkScheduleService.getSchedule(
+                        getLoginMemberId(),
+                        walkScheduleId
+                )
+        );
     }
 
     // 산책 일정 목록 조회
     @GetMapping
-    public ResponseEntity<List<WalkScheduleDto.DetailResponse>> getSchedules() {
-        return ResponseEntity.ok(walkScheduleService.getSchedules());
+    public ResponseEntity<List<WalkScheduleDto.DetailResponse>> getSchedules(
+            @ModelAttribute WalkScheduleDto.SearchCondition condition
+    ) {
+        return ResponseEntity.ok(
+                walkScheduleService.getSchedules(
+                        getLoginMemberId(),
+                        condition
+                )
+        );
     }
 
     // 현재 로그인 회원 ID 조회

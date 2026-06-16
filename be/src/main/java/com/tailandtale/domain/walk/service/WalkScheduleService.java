@@ -5,8 +5,10 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
+import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
 import com.tailandtale.domain.walk.entity.WalkScheduleStatus;
+import com.tailandtale.domain.walk.repository.WalkParticipantRepository;
 import com.tailandtale.domain.walk.repository.WalkScheduleRepository;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
@@ -25,6 +27,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class WalkScheduleService {
     private final WalkScheduleRepository walkScheduleRepository;
+    private final WalkParticipantRepository walkParticipantRepository;
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
 
@@ -65,7 +68,7 @@ public class WalkScheduleService {
         WalkSchedule savedWalkSchedule = walkScheduleRepository.save(walkSchedule);
 
         // 산책 일정 응답 반환
-        return WalkScheduleDto.DetailResponse.from(savedWalkSchedule);
+        return toDetailResponse(savedWalkSchedule, memberId);
     }
 
     // 산책 일정 수정
@@ -102,7 +105,7 @@ public class WalkScheduleService {
                 request.getPreferredPersonality()
         );
 
-        return WalkScheduleDto.DetailResponse.from(walkSchedule);
+        return toDetailResponse(walkSchedule, memberId);
     }
 
     // 산책 일정 취소
@@ -115,22 +118,26 @@ public class WalkScheduleService {
 
         walkSchedule.cancel();
 
-        return WalkScheduleDto.DetailResponse.from(walkSchedule);
+        return toDetailResponse(walkSchedule, memberId);
     }
 
     // 산책 일정 목록 조회
-    public List<WalkScheduleDto.DetailResponse> getSchedules() {
-        return walkScheduleRepository.findAllByOrderByScheduledAtAsc()
+    public List<WalkScheduleDto.DetailResponse> getSchedules(
+            Long memberId,
+            WalkScheduleDto.SearchCondition condition
+    ) {
+        return walkScheduleRepository.search(condition)
                 .stream()
-                .map(WalkScheduleDto.DetailResponse::from)
+                .map(walkSchedule -> toDetailResponse(walkSchedule, memberId))
+                .filter(response -> !Boolean.TRUE.equals(condition.getRecruitableOnly()) || Boolean.TRUE.equals(response.getIsRecruitable()))
                 .toList();
     }
 
     // 산책 일정 상세 조회
-    public WalkScheduleDto.DetailResponse getSchedule(Long walkScheduleId) {
+    public WalkScheduleDto.DetailResponse getSchedule(Long memberId, Long walkScheduleId) {
         WalkSchedule walkSchedule = getScheduleEntity(walkScheduleId);
 
-        return WalkScheduleDto.DetailResponse.from(walkSchedule);
+        return toDetailResponse(walkSchedule, memberId);
     }
 
     // 산책 일정 Entity 조회
@@ -164,5 +171,35 @@ public class WalkScheduleService {
         if (walkSchedule.getStatus() == WalkScheduleStatus.CANCELED) {
             throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_ALREADY_CANCELED);
         }
+    }
+
+    // 산책 일정 응답 생성
+    private WalkScheduleDto.DetailResponse toDetailResponse(WalkSchedule walkSchedule, Long memberId) {
+        long approvedParticipantCount = walkParticipantRepository.countByWalkScheduleIdAndStatus(
+                walkSchedule.getId(),
+                WalkParticipantStatus.APPROVED
+        );
+        long pendingRequestCount = walkParticipantRepository.countByWalkScheduleIdAndStatus(
+                walkSchedule.getId(),
+                WalkParticipantStatus.REQUESTED
+        );
+        WalkParticipantStatus myParticipantStatus = getMyParticipantStatus(walkSchedule.getId(), memberId);
+
+        return WalkScheduleDto.DetailResponse.from(
+                walkSchedule,
+                approvedParticipantCount,
+                pendingRequestCount,
+                myParticipantStatus
+        );
+    }
+
+    // 내 산책 참여 상태 조회
+    private WalkParticipantStatus getMyParticipantStatus(Long walkScheduleId, Long memberId) {
+        return walkParticipantRepository.findFirstByWalkScheduleIdAndMemberIdOrderByCreatedAtDesc(
+                        walkScheduleId,
+                        memberId
+                )
+                .map(walkParticipant -> walkParticipant.getStatus())
+                .orElse(null);
     }
 }

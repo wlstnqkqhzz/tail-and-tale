@@ -40,4 +40,10 @@ public interface WalkParticipantRepository extends JpaRepository<WalkParticipant
             Long walkScheduleId,
             WalkParticipantStatus status
     );
+
+    // 내 산책 참여 상태 조회
+    Optional<WalkParticipant> findFirstByWalkScheduleIdAndMemberIdOrderByCreatedAtDesc(
+            Long walkScheduleId,
+            Long memberId
+    );
 }

@@ -3,6 +3,7 @@ package com.tailandtale.domain.walk.dto;
 // 산책 일정 DTO
 
 import com.tailandtale.domain.walk.entity.PreferredDogSize;
+import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
 import com.tailandtale.domain.walk.entity.WalkScheduleStatus;
 import jakarta.validation.constraints.Future;
@@ -17,6 +18,19 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class WalkScheduleDto {
+
+    // 산책 일정 검색 조건 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class SearchCondition {
+        private String keyword;
+        private String region;
+        private WalkScheduleStatus status;
+        private PreferredDogSize preferredDogSize;
+        private LocalDateTime scheduledFrom;
+        private LocalDateTime scheduledTo;
+        private Boolean recruitableOnly;
+    }
 
     // 산책 일정 생성 DTO
     @Getter
@@ -100,12 +114,35 @@ public class WalkScheduleDto {
         private LocalDateTime scheduledAt;
         private Integer expectedDurationMinutes;
         private Integer maxParticipants;
+        private Long currentParticipantCount;
+        private Long approvedParticipantCount;
+        private Long pendingRequestCount;
 
         private PreferredDogSize preferredDogSize;
         private String preferredPersonality;
         private WalkScheduleStatus status;
+        private WalkParticipantStatus myParticipantStatus;
+        private Boolean isRecruitable;
 
         public static DetailResponse from(WalkSchedule walkSchedule) {
+            return from(
+                    walkSchedule,
+                    0L,
+                    0L,
+                    null
+            );
+        }
+
+        public static DetailResponse from(
+                WalkSchedule walkSchedule,
+                long approvedParticipantCount,
+                long pendingRequestCount,
+                WalkParticipantStatus myParticipantStatus
+        ) {
+            long currentParticipantCount = approvedParticipantCount + 1;
+            boolean isRecruitable = walkSchedule.getStatus() == WalkScheduleStatus.OPEN
+                    && currentParticipantCount < walkSchedule.getMaxParticipants();
+
             return DetailResponse.builder()
                     .walkScheduleId(walkSchedule.getId())
                     .hostMemberId(walkSchedule.getHostMember().getId())
@@ -119,9 +156,14 @@ public class WalkScheduleDto {
                     .scheduledAt(walkSchedule.getScheduledAt())
                     .expectedDurationMinutes(walkSchedule.getExpectedDurationMinutes())
                     .maxParticipants(walkSchedule.getMaxParticipants())
+                    .currentParticipantCount(currentParticipantCount)
+                    .approvedParticipantCount(approvedParticipantCount)
+                    .pendingRequestCount(pendingRequestCount)
                     .preferredDogSize(walkSchedule.getPreferredDogSize())
                     .preferredPersonality(walkSchedule.getPreferredPersonality())
                     .status(walkSchedule.getStatus())
+                    .myParticipantStatus(myParticipantStatus)
+                    .isRecruitable(isRecruitable)
                     .build();
         }
     }

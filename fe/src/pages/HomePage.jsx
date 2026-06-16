@@ -1,39 +1,253 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import AuthModal from "../components/auth/AuthModal";
+import { useAuth } from "../hooks/useAuth";
+import { getAccessToken } from "../utils/token";
 
 // 메인 랜딩 페이지
 
+const carouselPanels = [
+    {
+        type: "promo",
+    },
+    {
+        type: "story",
+        title: "남강공원 저녁 산책",
+        subtitle: "잔잔한 강변길에서 천천히 걷는 45분 코스",
+        region: "경남 진주",
+        time: "오늘 19:00",
+    },
+    {
+        type: "book",
+        title: "초전공원 소형견 모임",
+        subtitle: "낯가림 적은 친구들과 가볍게 인사해요",
+        region: "진주 초전동",
+        time: "내일 10:30",
+    },
+    {
+        type: "photo",
+        title: "비 오는 날 실내 케어",
+        subtitle: "산책 대신 컨디션 기록과 건강 루틴을 정리해요",
+        region: "온라인",
+        time: "이번 주",
+    },
+    {
+        type: "story",
+        title: "주말 메이트 모집",
+        subtitle: "공원에서 천천히 걷고 사진도 남겨요",
+        region: "진주 평거동",
+        time: "토요일 16:00",
+    },
+    {
+        type: "book",
+        title: "강변 코스 산책",
+        subtitle: "낯선 친구와도 부담 없이 걷는 코스",
+        region: "남강 산책로",
+        time: "일요일 09:30",
+    },
+];
+
+const keywords = [
+    "오늘 산책",
+    "진주 산책",
+    "소형견 모임",
+    "중형견 친구",
+    "대형견 산책",
+    "강변 코스",
+    "공원 산책",
+    "저녁 산책",
+    "주말 메이트",
+    "낯가림 적음",
+    "활발한 친구",
+    "천천히 걷기",
+    "인증 반려견",
+    "산책 일기",
+    "건강 기록",
+    "감정 다이어리",
+    "초보 집사",
+    "반려견 케어",
+    "동네 친구",
+    "산책 루틴",
+    "지역 산책",
+    "긴 산책",
+    "사진 남기기",
+    "우리집 반려동물",
+];
+
+const carouselPanelWidth = 480;
+const visiblePanelCount = 3;
+const heroImageUrl = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80";
+
 export default function HomePage() {
+    const navigate = useNavigate();
+    const { isLoading, isLoggedIn, member } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeSlide, setActiveSlide] = useState(0);
 
-    return (
-        <>
-            <Header
-                onLoginClick={() => setIsModalOpen(true)}
-            />
+    const maxSlideIndex = Math.max(carouselPanels.length - visiblePanelCount, 0);
+    const carouselTranslateX = activeSlide * carouselPanelWidth;
 
-            <main className="pt-20">
-                <section className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center">
-                    <h1 className="mb-6 text-6xl font-bold text-gray-900">
-                        반려견과의 이야기를
-                        <br />
-                        기록하고 공유하세요
-                    </h1>
+    const headlineName = useMemo(() => {
+        if (!member?.nickname) {
+            return "반려견";
+        }
 
-                    <p className="max-w-2xl text-lg text-gray-500">
-                        산책 기록, 추억, 건강 관리까지.
-                        우리 아이의 하루를 특별하게 남겨보세요.
-                    </p>
+        return `${member.nickname}님`;
+    }, [member]);
 
+    // 산책 일정 페이지 이동
+    const moveToWalks = () => {
+        if (!getAccessToken()) {
+            setIsModalOpen(true);
+            return;
+        }
+
+        navigate("/walks");
+    };
+
+    // 키워드 검색
+    const searchKeyword = (keyword) => {
+        navigate(`/walks?keyword=${encodeURIComponent(keyword)}`);
+    };
+
+    // 로그인 전 화면
+    const renderGuestHome = () => (
+        <main className="pt-20">
+            <section className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center">
+                <h1 className="mb-6 text-6xl font-bold text-gray-900">
+                    반려견과의 이야기를
+                    <br />
+                    기록하고 공유하세요
+                </h1>
+
+                <p className="max-w-2xl text-lg text-gray-500">
+                    산책 기록, 추억, 건강 관리까지.
+                    우리 아이의 하루를 따뜻하게 남겨보세요.
+                </p>
+
+                <div className="mt-10 flex flex-wrap justify-center gap-3">
                     <button
+                        type="button"
                         onClick={() => setIsModalOpen(true)}
-                        className="mt-10 rounded-full bg-black px-8 py-4 text-white transition hover:opacity-80"
+                        className="h-14 rounded-full bg-black px-8 text-sm font-semibold text-white transition hover:opacity-80"
                     >
                         시작하기
                     </button>
-                </section>
-            </main>
+
+                    <button
+                        type="button"
+                        onClick={moveToWalks}
+                        className="h-14 rounded-full border border-gray-300 px-8 text-sm font-semibold text-gray-800 transition hover:bg-gray-100"
+                    >
+                        산책 일정 보기
+                    </button>
+                </div>
+            </section>
+        </main>
+    );
+
+    // 로그인 후 화면
+    const renderMemberHome = () => (
+        <main className="bg-white pt-20">
+            <section className="mx-auto max-w-7xl px-8 pb-10 pt-14">
+                <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <h1 className="text-5xl font-semibold leading-tight tracking-normal text-gray-950">
+                            오늘의 산책은
+                            <br />
+                            {headlineName}의 이야기가 되는 공간.
+                        </h1>
+
+                        <p className="mt-6 max-w-2xl text-2xl leading-10 text-gray-300">
+                            가까운 산책 메이트를 찾아보고,
+                            <br />
+                            우리 아이에게 맞는 하루의 리듬을 만들어보세요.
+                            <br />
+                            기록은 쌓이고, 관계는 더 다정해집니다.
+                        </p>
+                    </div>
+
+                    <div className="text-sm text-gray-500">
+                        <span className="mr-2 font-serif italic text-emerald-600">notice</span>
+                        산책 메이트 모집과 참여 신청이 열려 있어요
+                    </div>
+                </div>
+            </section>
+
+            <section className="mx-auto max-w-[1500px] px-8">
+                <div className="relative mx-auto h-[520px] max-w-[1440px] overflow-hidden bg-gray-100">
+                    <div
+                        className="flex h-full transition-transform duration-500 ease-out"
+                        style={{ transform: `translateX(-${carouselTranslateX}px)` }}
+                    >
+                        {carouselPanels.map((panel, index) => (
+                            <CarouselPanel
+                                key={`${panel.type}-${index}`}
+                                panel={panel}
+                                imageUrl={heroImageUrl}
+                                onMoveToWalks={moveToWalks}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mx-auto mt-8 flex max-w-md items-center gap-5">
+                    <span className="w-8 text-right text-xs font-bold text-gray-950">
+                        {String(activeSlide + 1).padStart(2, "0")}
+                    </span>
+
+                    <input
+                        type="range"
+                        min="0"
+                        max={maxSlideIndex}
+                        value={activeSlide}
+                        onChange={(event) => setActiveSlide(Number(event.target.value))}
+                        className="h-1 flex-1 cursor-pointer accent-black"
+                        aria-label="추천 산책 슬라이드"
+                    />
+
+                    <span className="w-8 text-xs text-gray-300">
+                        {String(maxSlideIndex + 1).padStart(2, "0")}
+                    </span>
+                </div>
+            </section>
+
+            <section className="mx-auto max-w-6xl px-8 py-24">
+                <div className="text-center">
+                    <p className="text-lg font-bold tracking-[0.55em] text-gray-950">
+                        WALK KEYWORD
+                    </p>
+                    <p className="mt-4 text-sm text-gray-400">
+                        키워드로 분류된 다양한 산책 모음
+                    </p>
+                </div>
+
+                <div className="mt-12 grid grid-cols-2 border border-gray-200 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8">
+                    {keywords.map((keyword) => (
+                        <button
+                            key={keyword}
+                            type="button"
+                            onClick={() => searchKeyword(keyword)}
+                            className="flex aspect-[1.25/1] items-center justify-center border-b border-r border-gray-200 px-3 text-center text-sm leading-6 text-gray-600 transition hover:bg-gray-950 hover:text-white"
+                        >
+                            {keyword}
+                        </button>
+                    ))}
+                </div>
+            </section>
+        </main>
+    );
+
+    return (
+        <>
+            <Header onLoginClick={() => setIsModalOpen(true)} />
+
+            {isLoading ? (
+                <main className="flex min-h-screen items-center justify-center pt-20 text-sm text-gray-400">
+                    불러오는 중...
+                </main>
+            ) : isLoggedIn ? renderMemberHome() : renderGuestHome()}
 
             {isModalOpen && (
                 <AuthModal
@@ -41,5 +255,118 @@ export default function HomePage() {
                 />
             )}
         </>
+    );
+}
+
+function CarouselPanel({ panel, imageUrl, onMoveToWalks }) {
+    if (panel.type === "promo") {
+        return (
+            <div className="flex h-[520px] w-[480px] shrink-0 flex-col justify-center bg-gray-950 px-16 text-white">
+                <p className="text-sm text-gray-400">오늘만 무료</p>
+                <h2 className="mt-4 text-4xl font-bold leading-tight tracking-normal">
+                    오늘만 무료 ✦
+                </h2>
+                <p className="mt-4 text-lg font-semibold text-gray-200">
+                    남은 시간&nbsp;&nbsp;07:28:51
+                </p>
+
+                <div className="mt-10 w-64 bg-emerald-900/80 p-5">
+                    <div className="h-28 overflow-hidden bg-emerald-950">
+                        <img
+                            src={imageUrl}
+                            alt="추천 산책"
+                            className="h-full w-full object-cover"
+                        />
+                    </div>
+                    <p className="mt-3 font-serif text-xs italic text-emerald-100">
+                        tail & tale walk
+                    </p>
+                    <p className="mt-5 text-xl font-bold leading-8">
+                        가까운 곳에서 만나는
+                        <br />
+                        오늘의 산책 메이트
+                    </p>
+                    <p className="mt-5 text-xs font-semibold text-emerald-100">
+                        by Tail & Tale
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (panel.type === "story") {
+        return (
+            <div className="relative h-[520px] w-[480px] shrink-0 overflow-hidden bg-gray-900">
+                <img
+                    src={imageUrl}
+                    alt={panel.title}
+                    className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute bottom-16 left-12 right-12 text-white">
+                    <p className="text-sm text-white/80">오늘 추천 산책</p>
+                    <h2 className="mt-5 text-4xl font-bold leading-tight tracking-normal">
+                        {panel.title}
+                    </h2>
+                    <p className="mt-4 text-sm font-medium text-white/90">
+                        {panel.subtitle}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={onMoveToWalks}
+                        className="mt-8 h-12 rounded-full bg-white px-7 text-sm font-bold text-gray-950 transition hover:bg-gray-100"
+                    >
+                        산책 일정 보러가기
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (panel.type === "book") {
+        return (
+            <div className="flex h-[520px] w-[480px] shrink-0 flex-col items-center justify-center bg-gray-100 px-12">
+                <div className="h-[330px] w-56 overflow-hidden rounded bg-white shadow-2xl">
+                    <div className="h-44 overflow-hidden">
+                        <img
+                            src={imageUrl}
+                            alt={panel.title}
+                            className="h-full w-full object-cover"
+                        />
+                    </div>
+                    <div className="px-5 py-6">
+                        <h2 className="text-xl font-bold leading-7 text-gray-950">
+                            {panel.title}
+                        </h2>
+                        <p className="mt-5 text-xs text-gray-400">{panel.region}</p>
+                    </div>
+                </div>
+
+                <p className="mt-10 text-center text-sm text-gray-500">
+                    Featured Walk
+                    <br />
+                    {panel.time}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative h-[520px] w-[480px] shrink-0 overflow-hidden bg-gray-900">
+            <img
+                src={imageUrl}
+                alt={panel.title}
+                className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/30" />
+            <div className="absolute bottom-12 left-10 right-10 text-white">
+                <p className="text-sm text-white/70">{panel.region}</p>
+                <h2 className="mt-4 text-3xl font-bold leading-tight tracking-normal">
+                    {panel.title}
+                </h2>
+                <p className="mt-4 text-sm text-white/85">{panel.subtitle}</p>
+                <p className="mt-6 text-xs font-semibold text-white/70">{panel.time}</p>
+            </div>
+        </div>
     );
 }
