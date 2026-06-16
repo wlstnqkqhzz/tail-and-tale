@@ -206,4 +206,14 @@ public class WalkSchedule extends BaseEntity {
     public void cancel() {
         this.status = WalkScheduleStatus.CANCELED;
     }
+
+    // 모집 마감
+    public void close() {
+        this.status = WalkScheduleStatus.CLOSED;
+    }
+
+    // 모집 재개
+    public void reopen() {
+        this.status = WalkScheduleStatus.OPEN;
+    }
 }

@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// 산책 일정 CRUD API 컨트롤러
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/walk-schedules")
@@ -64,7 +66,7 @@ public class WalkScheduleController {
         return ResponseEntity.ok(walkScheduleService.getSchedules());
     }
 
-    // 로그인 회원 ID 조회
+    // 현재 로그인 회원 ID 조회
     private Long getLoginMemberId() {
         return (Long) SecurityContextHolder.getContext()
                 .getAuthentication()

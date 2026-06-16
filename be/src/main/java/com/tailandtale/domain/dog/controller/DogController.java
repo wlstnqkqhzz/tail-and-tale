@@ -68,7 +68,7 @@ public class DogController {
         return ResponseEntity.ok(dogService.verifyDog(memberId, dogId, request));
     }
 
-    // 로그인 회원 ID 조회
+    // 현재 로그인 회원 ID 조회
     private Long getLoginMemberId() {
         return (Long) SecurityContextHolder.getContext()
                 .getAuthentication()

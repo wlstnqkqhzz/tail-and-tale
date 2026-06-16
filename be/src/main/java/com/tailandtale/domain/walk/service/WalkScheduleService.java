@@ -1,7 +1,5 @@
 package com.tailandtale.domain.walk.service;
 
-// 산책 일정 Service
-
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.entity.Member;
@@ -19,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
+// 산책 일정 Service
 
 @Service
 @RequiredArgsConstructor
