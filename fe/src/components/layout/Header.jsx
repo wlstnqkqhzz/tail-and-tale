@@ -67,6 +67,13 @@ export default function Header({ onLoginClick }) {
                                         산책 일정
                                     </button>
 
+                                    <button
+                                        onClick={() => movePage("/chat/rooms")}
+                                        className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
+                                    >
+                                        채팅
+                                    </button>
+
                                     <div className="h-px bg-gray-100" />
 
                                     <button

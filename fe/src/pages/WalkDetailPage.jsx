@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
+import { getWalkChatRoom } from "../api/chat";
 import { getDogs } from "../api/dog";
 import {
     approveWalkParticipant,
@@ -39,6 +40,8 @@ export default function WalkDetailPage() {
     const [applyForm, setApplyForm] = useState(initialApplyForm);
 
     const isHost = Boolean(member && schedule?.hostMemberId === member.memberId);
+    const canEnterChat = Boolean(schedule && (isHost || schedule.myParticipantStatus === "APPROVED"));
+    const verifiedDogs = dogs.filter((dog) => dog.isVerified);
 
     // 산책 게시글 상세 조회
     const fetchScheduleDetail = useCallback(async () => {
@@ -131,8 +134,14 @@ export default function WalkDetailPage() {
             return;
         }
 
+        if (verifiedDogs.length === 0) {
+            alert("산책 참여를 위해 먼저 반려견 인증을 진행해주세요.");
+            navigate("/dogs");
+            return;
+        }
+
         setApplyForm({
-            dogId: String(dogs[0].dogId),
+            dogId: String(verifiedDogs[0].dogId),
             message: "",
         });
         setIsApplyModalOpen(true);
@@ -154,6 +163,13 @@ export default function WalkDetailPage() {
 
         if (!applyForm.dogId) {
             alert("참여할 반려견을 선택해주세요.");
+            return;
+        }
+
+        const selectedDog = dogs.find((dog) => String(dog.dogId) === applyForm.dogId);
+
+        if (!selectedDog?.isVerified) {
+            alert("산책 참여를 위해 먼저 반려견 인증을 진행해주세요.");
             return;
         }
 
@@ -205,6 +221,27 @@ export default function WalkDetailPage() {
         }
     };
 
+    // 채팅방 입장
+    const enterChatRoom = async () => {
+        if (!schedule) {
+            return;
+        }
+
+        try {
+            const response = await getWalkChatRoom(walkScheduleId);
+
+            navigate(`/chat/rooms/${response.data.chatRoomId}`, {
+                state: {
+                    walkTitle: response.data.walkTitle,
+                    walkScheduleId: response.data.walkScheduleId,
+                },
+            });
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "채팅방 입장에 실패했습니다.");
+        }
+    };
+
     return (
         <>
             <Header />
@@ -242,14 +279,25 @@ export default function WalkDetailPage() {
                                         </p>
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={openApplyModal}
-                                        disabled={!canApply(schedule, isHost)}
-                                        className="h-12 rounded-full bg-black px-8 text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
-                                    >
-                                        {getApplyButtonText(schedule, isHost)}
-                                    </button>
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:min-w-72">
+                                        <button
+                                            type="button"
+                                            onClick={openApplyModal}
+                                            disabled={!canApply(schedule, isHost)}
+                                            className="h-12 rounded-full bg-black px-8 text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                        >
+                                            {getApplyButtonText(schedule, isHost)}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={enterChatRoom}
+                                            disabled={!canEnterChat}
+                                            className="h-12 rounded-full border border-gray-200 px-8 text-sm font-bold text-gray-950 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                                        >
+                                            채팅방 입장
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -326,7 +374,7 @@ export default function WalkDetailPage() {
             {isApplyModalOpen && schedule && (
                 <ApplyWalkModal
                     schedule={schedule}
-                    dogs={dogs}
+                    dogs={verifiedDogs}
                     form={applyForm}
                     isSubmitting={isSubmitting}
                     onChange={handleApplyChange}

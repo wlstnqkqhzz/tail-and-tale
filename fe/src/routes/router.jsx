@@ -7,6 +7,8 @@ import DogsPage from "../pages/DogsPage";
 import WalksPage from "../pages/WalksPage";
 import WalkDetailPage from "../pages/WalkDetailPage";
 import WalkCreatePage from "../pages/WalkCreatePage";
+import ChatRoomsPage from "../pages/ChatRoomsPage";
+import ChatRoomPage from "../pages/ChatRoomPage";
 
 // 애플리케이션 라우터 설정
 
@@ -18,4 +20,6 @@ export const router = createBrowserRouter([
     { path: "/walks", element: <WalksPage />,},
     { path: "/walks/new", element: <WalkCreatePage />,},
     { path: "/walks/:walkScheduleId", element: <WalkDetailPage />,},
+    { path: "/chat/rooms", element: <ChatRoomsPage />,},
+    { path: "/chat/rooms/:chatRoomId", element: <ChatRoomPage />,},
 ]);

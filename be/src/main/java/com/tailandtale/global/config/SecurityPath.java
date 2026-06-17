@@ -13,6 +13,8 @@ public final class SecurityPath {
             "/api/members/check-nickname",
             "/api/members/reissue",
             "/api/members/logout",
+            "/ws-chat",
+            "/ws-chat/**",
             "/oauth2/**",
             "/login/oauth2/**",
             "/error"

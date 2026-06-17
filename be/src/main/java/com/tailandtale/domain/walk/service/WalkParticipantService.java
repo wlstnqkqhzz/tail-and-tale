@@ -2,6 +2,7 @@ package com.tailandtale.domain.walk.service;
 
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
+import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.walk.dto.WalkParticipantDto;
@@ -28,6 +29,7 @@ public class WalkParticipantService {
     private final WalkScheduleRepository walkScheduleRepository;
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
+    private final ChatService chatService;
 
     // 산책 참여 신청
     @Transactional
@@ -43,6 +45,7 @@ public class WalkParticipantService {
         validateWalkOpen(walkSchedule);
         validateNotHost(walkSchedule, memberId);
         validateDogOwner(dog, memberId);
+        validateVerifiedDog(dog);
         validateNotAlreadyActive(walkScheduleId, memberId, dog.getId());
 
         WalkParticipant walkParticipant = walkParticipantRepository.findByWalkScheduleIdAndMemberIdAndDogId(
@@ -83,6 +86,7 @@ public class WalkParticipantService {
         validateCapacity(walkSchedule, approvedParticipantCount);
 
         walkParticipant.approve();
+        chatService.addParticipant(walkSchedule, walkParticipant.getMember());
 
         if (getTotalParticipantCountAfterApprove(approvedParticipantCount) == walkSchedule.getMaxParticipants()) {
             walkSchedule.close();
@@ -131,6 +135,10 @@ public class WalkParticipantService {
 
         if (previousStatus == WalkParticipantStatus.APPROVED && walkSchedule.getStatus() == WalkScheduleStatus.CLOSED) {
             walkSchedule.reopen();
+        }
+
+        if (previousStatus == WalkParticipantStatus.APPROVED) {
+            chatService.leaveParticipant(walkSchedule.getId(), walkParticipant.getMember().getId());
         }
 
         return WalkParticipantDto.Response.from(walkParticipant);
@@ -202,6 +210,13 @@ public class WalkParticipantService {
     private void validateDogOwner(Dog dog, Long memberId) {
         if (!dog.getMember().getId().equals(memberId)) {
             throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_DOG_ACCESS_DENIED);
+        }
+    }
+
+    // 반려견 인증 여부 검증
+    private void validateVerifiedDog(Dog dog) {
+        if (!Boolean.TRUE.equals(dog.getIsVerified())) {
+            throw new CustomException(DogErrorCode.DOG_NOT_VERIFIED);
         }
     }
 

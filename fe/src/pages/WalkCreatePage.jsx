@@ -32,28 +32,40 @@ export default function WalkCreatePage() {
     // 요청 상태
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const verifiedDogs = dogs.filter((dog) => dog.isVerified);
 
     // 내 반려견 목록 조회
     const fetchDogs = useCallback(async () => {
         try {
             const response = await getDogs();
             const nextDogs = response.data;
+            const firstVerifiedDog = nextDogs.find((dog) => dog.isVerified);
 
             setDogs(nextDogs);
 
-            if (nextDogs.length > 0) {
+            if (firstVerifiedDog) {
                 setForm((prevForm) => ({
                     ...prevForm,
-                    dogId: String(nextDogs[0].dogId),
+                    dogId: String(firstVerifiedDog.dogId),
                 }));
+                return;
             }
+
+            if (nextDogs.length === 0) {
+                alert("산책 글 작성을 위해 먼저 반려견을 등록해주세요.");
+                navigate("/dogs");
+                return;
+            }
+
+            alert("산책 글 작성을 위해 먼저 반려견 인증을 진행해주세요.");
+            navigate("/dogs");
         } catch (error) {
             console.error(error);
             alert("반려견 목록 조회에 실패했습니다.");
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [navigate]);
 
     // 비로그인 접근 방지 및 초기 조회
     useEffect(() => {
@@ -105,9 +117,22 @@ export default function WalkCreatePage() {
         const scheduledAt = form.scheduledAt ? new Date(form.scheduledAt) : null;
         const maxParticipants = Number(form.maxParticipants);
         const expectedDurationMinutes = Number(form.expectedDurationMinutes);
+        const selectedDog = dogs.find((dog) => String(dog.dogId) === form.dogId);
 
-        if (!form.dogId) {
+        if (dogs.length === 0) {
+            return "산책 글 작성을 위해 먼저 반려견을 등록해주세요.";
+        }
+
+        if (verifiedDogs.length === 0) {
+            return "산책 글 작성을 위해 먼저 반려견 인증을 진행해주세요.";
+        }
+
+        if (!form.dogId || !selectedDog) {
             return "호스트 반려견을 선택해주세요.";
+        }
+
+        if (!selectedDog.isVerified) {
+            return "인증된 반려견만 산책 글을 작성할 수 있습니다.";
         }
 
         if (!form.title.trim()) {
@@ -205,14 +230,16 @@ export default function WalkCreatePage() {
                                         name="dogId"
                                         value={form.dogId}
                                         onChange={handleChange}
-                                        disabled={isLoading || dogs.length === 0}
+                                        disabled={isLoading || verifiedDogs.length === 0}
                                         className="h-12 w-full border border-gray-200 px-4 text-sm outline-none transition focus:border-black disabled:bg-gray-50"
                                     >
                                         {dogs.length === 0 ? (
                                             <option value="">등록된 반려견 없음</option>
+                                        ) : verifiedDogs.length === 0 ? (
+                                            <option value="">인증된 반려견 없음</option>
                                         ) : dogs.map((dog) => (
-                                            <option key={dog.dogId} value={dog.dogId}>
-                                                {dog.name} {dog.isVerified ? "(인증)" : ""}
+                                            <option key={dog.dogId} value={dog.dogId} disabled={!dog.isVerified}>
+                                                {dog.name} {dog.isVerified ? "(인증)" : "(미인증)"}
                                             </option>
                                         ))}
                                     </select>
@@ -363,7 +390,7 @@ export default function WalkCreatePage() {
 
                             <button
                                 type="submit"
-                                disabled={isSubmitting || dogs.length === 0}
+                                disabled={isSubmitting || isLoading}
                                 className="h-12 bg-black text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
                             >
                                 {isSubmitting ? "작성 중..." : "작성 완료"}
@@ -386,6 +413,16 @@ export default function WalkCreatePage() {
                                 className="mt-6 h-12 w-full bg-gray-950 text-sm font-bold text-white transition hover:opacity-80"
                             >
                                 반려견 등록하러 가기
+                            </button>
+                        )}
+
+                        {!isLoading && dogs.length > 0 && verifiedDogs.length === 0 && (
+                            <button
+                                type="button"
+                                onClick={() => navigate("/dogs")}
+                                className="mt-6 h-12 w-full bg-gray-950 text-sm font-bold text-white transition hover:opacity-80"
+                            >
+                                반려견 인증하러 가기
                             </button>
                         )}
                     </aside>

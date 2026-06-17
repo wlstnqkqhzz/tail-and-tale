@@ -2,6 +2,7 @@ package com.tailandtale.domain.walk.service;
 
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
+import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
@@ -30,6 +31,7 @@ public class WalkScheduleService {
     private final WalkParticipantRepository walkParticipantRepository;
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
+    private final ChatService chatService;
 
     // 산책 일정 생성
     @Transactional
@@ -46,6 +48,7 @@ public class WalkScheduleService {
 
         // 본인 반려견 여부 검증
         validateDogOwner(dog, member.getId());
+        validateVerifiedDog(dog);
 
         // 산책 일정 생성
         WalkSchedule walkSchedule = WalkSchedule.create(
@@ -66,6 +69,7 @@ public class WalkScheduleService {
 
         // 산책 일정 저장
         WalkSchedule savedWalkSchedule = walkScheduleRepository.save(walkSchedule);
+        chatService.createChatRoom(savedWalkSchedule);
 
         // 산책 일정 응답 반환
         return toDetailResponse(savedWalkSchedule, memberId);
@@ -88,6 +92,7 @@ public class WalkScheduleService {
         if (request.getDogId() != null) {
             dog = getDog(request.getDogId());
             validateDogOwner(dog, memberId);
+            validateVerifiedDog(dog);
         }
 
         walkSchedule.update(
@@ -117,6 +122,7 @@ public class WalkScheduleService {
         validateEditableSchedule(walkSchedule);
 
         walkSchedule.cancel();
+        chatService.closeChatRoom(walkSchedule.getId());
 
         return toDetailResponse(walkSchedule, memberId);
     }
@@ -163,6 +169,13 @@ public class WalkScheduleService {
     private void validateDogOwner(Dog dog, Long memberId) {
         if (!dog.getMember().getId().equals(memberId)) {
             throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_DOG_ACCESS_DENIED);
+        }
+    }
+
+    // 반려견 인증 여부 검증
+    private void validateVerifiedDog(Dog dog) {
+        if (!Boolean.TRUE.equals(dog.getIsVerified())) {
+            throw new CustomException(DogErrorCode.DOG_NOT_VERIFIED);
         }
     }
 
