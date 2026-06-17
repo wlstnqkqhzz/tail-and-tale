@@ -15,6 +15,7 @@ export default function ChatRoomPage() {
     const { chatRoomId } = useParams();
     const { member } = useAuth();
     const messageListRef = useRef(null);
+    const messageInputRef = useRef(null);
     const stompClientRef = useRef(null);
 
     // 채팅 상태
@@ -88,6 +89,7 @@ export default function ChatRoomPage() {
                 onConnect: () => {
                     setIsConnected(true);
                     setConnectionMessage("실시간 연결됨");
+                    messageInputRef.current?.focus();
                 },
                 onMessage: (message) => {
                     setMessages((prevMessages) => [...prevMessages, message]);
@@ -133,7 +135,11 @@ export default function ChatRoomPage() {
         try {
             stompClientRef.current?.send(content.trim());
             setContent("");
+            window.setTimeout(() => {
+                messageInputRef.current?.focus();
+            }, 0);
         } catch (error) {
+            setConnectionMessage(error.message || "채팅 메시지 전송에 실패했습니다.");
             alert(error.message || "채팅 메시지 전송에 실패했습니다.");
         }
     };
@@ -199,6 +205,7 @@ export default function ChatRoomPage() {
 
                     <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-[1fr_auto] gap-3">
                         <input
+                            ref={messageInputRef}
                             value={content}
                             onChange={(event) => setContent(event.target.value)}
                             maxLength={1000}

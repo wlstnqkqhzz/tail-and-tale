@@ -125,6 +125,25 @@ public class WalkParticipantService {
 
         validateParticipantOwner(walkParticipant, memberId);
 
+        return cancelParticipant(walkSchedule, walkParticipant);
+    }
+
+    // 내 산책 참여 취소
+    @Transactional
+    public WalkParticipantDto.Response cancelMyWalk(Long memberId, Long walkScheduleId) {
+        WalkSchedule walkSchedule = getWalkSchedule(walkScheduleId);
+        WalkParticipant walkParticipant = walkParticipantRepository.findFirstByWalkScheduleIdAndMemberIdAndStatusInOrderByCreatedAtDesc(
+                        walkScheduleId,
+                        memberId,
+                        List.of(WalkParticipantStatus.REQUESTED, WalkParticipantStatus.APPROVED)
+                )
+                .orElseThrow(() -> new CustomException(WalkParticipantErrorCode.WALK_PARTICIPANT_NOT_FOUND));
+
+        return cancelParticipant(walkSchedule, walkParticipant);
+    }
+
+    // 산책 참여 취소 처리
+    private WalkParticipantDto.Response cancelParticipant(WalkSchedule walkSchedule, WalkParticipant walkParticipant) {
         if (walkParticipant.getStatus() == WalkParticipantStatus.CANCELED) {
             throw new CustomException(WalkParticipantErrorCode.WALK_PARTICIPANT_ALREADY_CANCELED);
         }

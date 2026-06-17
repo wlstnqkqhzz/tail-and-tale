@@ -1,10 +1,18 @@
 package com.tailandtale.domain.member.dto;
 
+import com.tailandtale.domain.chat.dto.ChatDto;
+import com.tailandtale.domain.dog.dto.DogDto;
 import com.tailandtale.domain.member.entity.Member;
+import com.tailandtale.domain.walk.dto.WalkScheduleDto;
+import com.tailandtale.domain.walk.entity.WalkParticipant;
+import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 // 회원 요청 및 응답 DTO 정의 클래스
 
@@ -80,6 +88,48 @@ public class MemberDto {
         private String phoneNumber;
         private String region;
         private String introduction;
+    }
+
+    // 마이페이지 대시보드 응답 DTO
+    @Getter
+    @Builder
+    public static class DashboardResponse {
+
+        private DetailResponse member;
+        private List<DogDto.DetailResponse> dogs;
+        private List<WalkScheduleDto.DetailResponse> myWalkSchedules;
+        private List<ParticipationResponse> myParticipations;
+        private List<ChatDto.RoomResponse> chatRooms;
+    }
+
+    // 내 산책 참여 응답 DTO
+    @Getter
+    @Builder
+    public static class ParticipationResponse {
+
+        private Long walkParticipantId;
+        private Long walkScheduleId;
+        private String title;
+        private String meetingPlace;
+        private LocalDateTime scheduledAt;
+        private Integer maxParticipants;
+        private Long currentParticipantCount;
+        private WalkParticipantStatus status;
+        private String dogName;
+
+        public static ParticipationResponse from(WalkParticipant walkParticipant, long approvedParticipantCount) {
+            return ParticipationResponse.builder()
+                    .walkParticipantId(walkParticipant.getId())
+                    .walkScheduleId(walkParticipant.getWalkSchedule().getId())
+                    .title(walkParticipant.getWalkSchedule().getTitle())
+                    .meetingPlace(walkParticipant.getWalkSchedule().getMeetingPlace())
+                    .scheduledAt(walkParticipant.getWalkSchedule().getScheduledAt())
+                    .maxParticipants(walkParticipant.getWalkSchedule().getMaxParticipants())
+                    .currentParticipantCount(approvedParticipantCount + 1)
+                    .status(walkParticipant.getStatus())
+                    .dogName(walkParticipant.getDog().getName())
+                    .build();
+        }
     }
 
     // OAuth 추가 정보 입력 DTO

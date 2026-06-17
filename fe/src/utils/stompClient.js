@@ -13,13 +13,7 @@ export function createChatStompClient({
     const socket = new WebSocket(webSocketUrl);
     let isConnected = false;
 
-    console.info("[chat-websocket] connecting", {
-        chatRoomId,
-        webSocketUrl,
-    });
-
     socket.onopen = () => {
-        console.info("[chat-websocket] opened");
         socket.send(buildFrame("CONNECT", {
             "accept-version": "1.2",
             "heart-beat": "10000,10000",
@@ -34,8 +28,6 @@ export function createChatStompClient({
 
         frames.forEach((frame) => {
             const parsedFrame = parseFrame(frame);
-
-            console.debug("[chat-websocket] received", parsedFrame);
 
             if (parsedFrame.command === "CONNECTED") {
                 isConnected = true;
@@ -53,7 +45,11 @@ export function createChatStompClient({
             }
 
             if (parsedFrame.command === "ERROR") {
-                console.error("[chat-websocket] stomp error", parsedFrame);
+                console.error("[chat-websocket] stomp error", {
+                    chatRoomId,
+                    webSocketUrl,
+                    frame: parsedFrame,
+                });
                 onError?.(parsedFrame.body || "채팅 연결 중 오류가 발생했습니다.");
             }
         });
@@ -66,11 +62,14 @@ export function createChatStompClient({
 
     socket.onclose = (event) => {
         isConnected = false;
-        console.warn("[chat-websocket] closed", {
-            code: event.code,
-            reason: event.reason,
-            wasClean: event.wasClean,
-        });
+
+        if (!event.wasClean && event.code !== 1000) {
+            console.warn("[chat-websocket] closed", {
+                chatRoomId,
+                code: event.code,
+                reason: event.reason,
+            });
+        }
     };
 
     return {

@@ -39,3 +39,8 @@ export const rejectWalkParticipant = (walkScheduleId, walkParticipantId) => {
 export const cancelWalkParticipation = (walkScheduleId, walkParticipantId) => {
     return api.patch(`/api/walk-schedules/${walkScheduleId}/participants/${walkParticipantId}/cancel`);
 };
+
+// 내 산책 참여 취소
+export const cancelMyWalkParticipation = (walkScheduleId) => {
+    return api.patch(`/api/walk-schedules/${walkScheduleId}/participants/me/cancel`);
+};

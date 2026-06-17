@@ -66,6 +66,17 @@ public class WalkParticipantController {
         );
     }
 
+    // 내 산책 참여 취소
+    @PatchMapping("/{walkScheduleId}/participants/me/cancel")
+    public ResponseEntity<WalkParticipantDto.Response> cancelMyWalk(@PathVariable Long walkScheduleId) {
+        return ResponseEntity.ok(
+                walkParticipantService.cancelMyWalk(
+                        getLoginMemberId(),
+                        walkScheduleId
+                )
+        );
+    }
+
     // 참여자 목록 조회
     @GetMapping("/{walkScheduleId}/participants")
     public ResponseEntity<List<WalkParticipantDto.Response>> getParticipants(@PathVariable Long walkScheduleId) {

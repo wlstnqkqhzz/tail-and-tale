@@ -35,6 +35,9 @@ public interface WalkParticipantRepository extends JpaRepository<WalkParticipant
     // 참여자 목록 조회
     List<WalkParticipant> findAllByWalkScheduleIdOrderByCreatedAtAsc(Long walkScheduleId);
 
+    // 내 산책 참여 목록 조회
+    List<WalkParticipant> findAllByMemberIdOrderByCreatedAtDesc(Long memberId);
+
     // 승인된 참여 인원 조회
     long countByWalkScheduleIdAndStatus(
             Long walkScheduleId,
@@ -52,5 +55,12 @@ public interface WalkParticipantRepository extends JpaRepository<WalkParticipant
     Optional<WalkParticipant> findFirstByWalkScheduleIdAndMemberIdOrderByCreatedAtDesc(
             Long walkScheduleId,
             Long memberId
+    );
+
+    // 취소 가능한 내 산책 참여 조회
+    Optional<WalkParticipant> findFirstByWalkScheduleIdAndMemberIdAndStatusInOrderByCreatedAtDesc(
+            Long walkScheduleId,
+            Long memberId,
+            Collection<WalkParticipantStatus> statuses
     );
 }

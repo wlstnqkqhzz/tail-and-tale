@@ -8,6 +8,7 @@ import { getWalkChatRoom } from "../api/chat";
 import { getDogs } from "../api/dog";
 import {
     approveWalkParticipant,
+    cancelMyWalkParticipation,
     getWalkParticipants,
     getWalkSchedule,
     rejectWalkParticipant,
@@ -42,6 +43,7 @@ export default function WalkDetailPage() {
     const isHost = Boolean(member && schedule?.hostMemberId === member.memberId);
     const canEnterChat = Boolean(schedule && (isHost || schedule.myParticipantStatus === "APPROVED"));
     const verifiedDogs = dogs.filter((dog) => dog.isVerified);
+    const canCancelParticipation = Boolean(schedule && ["REQUESTED", "APPROVED"].includes(schedule.myParticipantStatus));
 
     // 산책 게시글 상세 조회
     const fetchScheduleDetail = useCallback(async () => {
@@ -221,6 +223,23 @@ export default function WalkDetailPage() {
         }
     };
 
+    // 내 산책 참여 취소
+    const handleCancelMyParticipation = async () => {
+        if (!window.confirm("산책 참여 신청을 취소할까요?")) {
+            return;
+        }
+
+        try {
+            await cancelMyWalkParticipation(walkScheduleId);
+
+            alert("산책 참여 신청이 취소되었습니다.");
+            await fetchScheduleDetail();
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 참여 신청 취소에 실패했습니다.");
+        }
+    };
+
     // 채팅방 입장
     const enterChatRoom = async () => {
         if (!schedule) {
@@ -297,6 +316,16 @@ export default function WalkDetailPage() {
                                         >
                                             채팅방 입장
                                         </button>
+
+                                        {canCancelParticipation && (
+                                            <button
+                                                type="button"
+                                                onClick={handleCancelMyParticipation}
+                                                className="h-12 rounded-full border border-red-100 px-8 text-sm font-bold text-red-500 transition hover:bg-red-50 sm:col-span-2"
+                                            >
+                                                신청 취소
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>

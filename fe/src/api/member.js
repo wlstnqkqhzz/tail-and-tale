@@ -19,3 +19,13 @@ export const completeProfile = (data) => {
 export const getMyInfo = () => {
     return api.get("/api/members/me");
 };
+
+// 내 정보 수정
+export const updateMyProfile = (data) => {
+    return api.patch("/api/members/me", data);
+};
+
+// 내 마이페이지 대시보드 조회
+export const getMyDashboard = () => {
+    return api.get("/api/members/me/dashboard");
+};

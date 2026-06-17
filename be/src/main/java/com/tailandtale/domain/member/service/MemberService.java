@@ -1,11 +1,19 @@
 package com.tailandtale.domain.member.service;
 
+import com.tailandtale.domain.chat.service.ChatService;
+import com.tailandtale.domain.dog.dto.DogDto;
+import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.dto.LoginFormDto;
 import com.tailandtale.domain.member.dto.MemberDto;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.RefreshToken;
 import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.member.repository.RefreshTokenRepository;
+import com.tailandtale.domain.walk.dto.WalkScheduleDto;
+import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
+import com.tailandtale.domain.walk.entity.WalkSchedule;
+import com.tailandtale.domain.walk.repository.WalkParticipantRepository;
+import com.tailandtale.domain.walk.repository.WalkScheduleRepository;
 import com.tailandtale.global.exception.AuthErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.MemberErrorCode;
@@ -24,6 +32,10 @@ import java.time.LocalDateTime;
 @Transactional(readOnly = true)
 public class MemberService {
     private final MemberRepository memberRepository;
+    private final DogRepository dogRepository;
+    private final WalkScheduleRepository walkScheduleRepository;
+    private final WalkParticipantRepository walkParticipantRepository;
+    private final ChatService chatService;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -87,6 +99,32 @@ public class MemberService {
         Member member = memberRepository.findById(memberId).orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
 
         return MemberDto.DetailResponse.from(member);
+    }
+
+    // 마이페이지 대시보드 조회
+    public MemberDto.DashboardResponse getMyDashboard(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberDto.DashboardResponse.builder()
+                .member(MemberDto.DetailResponse.from(member))
+                .dogs(dogRepository.findAllByMemberId(memberId)
+                        .stream()
+                        .map(DogDto.DetailResponse::from)
+                        .toList())
+                .myWalkSchedules(walkScheduleRepository.findAllByHostMemberIdOrderByCreatedAtDesc(memberId)
+                        .stream()
+                        .map(walkSchedule -> toWalkScheduleResponse(walkSchedule, memberId))
+                        .toList())
+                .myParticipations(walkParticipantRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId)
+                        .stream()
+                        .map(walkParticipant -> MemberDto.ParticipationResponse.from(
+                                walkParticipant,
+                                getApprovedCount(walkParticipant.getWalkSchedule().getId())
+                        ))
+                        .toList())
+                .chatRooms(chatService.getMyChatRooms(memberId))
+                .build();
     }
 
     // OAuth 추가 정보 입력 완료
@@ -178,5 +216,35 @@ public class MemberService {
         }
 
         savedRefreshToken.revoke();
+    }
+
+    // 산책 일정 응답 생성
+    private WalkScheduleDto.DetailResponse toWalkScheduleResponse(WalkSchedule walkSchedule, Long memberId) {
+        long approvedParticipantCount = getApprovedCount(walkSchedule.getId());
+        long pendingRequestCount = walkParticipantRepository.countByWalkScheduleIdAndStatus(
+                walkSchedule.getId(),
+                WalkParticipantStatus.REQUESTED
+        );
+        WalkParticipantStatus myParticipantStatus = walkParticipantRepository.findFirstByWalkScheduleIdAndMemberIdOrderByCreatedAtDesc(
+                        walkSchedule.getId(),
+                        memberId
+                )
+                .map(walkParticipant -> walkParticipant.getStatus())
+                .orElse(null);
+
+        return WalkScheduleDto.DetailResponse.from(
+                walkSchedule,
+                approvedParticipantCount,
+                pendingRequestCount,
+                myParticipantStatus
+        );
+    }
+
+    // 승인된 참여자 수 조회
+    private long getApprovedCount(Long walkScheduleId) {
+        return walkParticipantRepository.countByWalkScheduleIdAndStatus(
+                walkScheduleId,
+                WalkParticipantStatus.APPROVED
+        );
     }
 }

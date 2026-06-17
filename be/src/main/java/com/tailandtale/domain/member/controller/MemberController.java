@@ -56,6 +56,16 @@ public class MemberController {
         return ResponseEntity.ok(memberService.getMember(memberId));
     }
 
+    // 내 마이페이지 대시보드 조회
+    @GetMapping("/me/dashboard")
+    public ResponseEntity<MemberDto.DashboardResponse> getMyDashboard() {
+        Long memberId = (Long) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        return ResponseEntity.ok(memberService.getMyDashboard(memberId));
+    }
+
     // Refresh Token 재발급
     @PostMapping("/reissue")
     public ResponseEntity<LoginFormDto.TokenResponse> reissue(@Valid @RequestBody LoginFormDto.ReissueRequest request) {

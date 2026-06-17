@@ -4,10 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
-import { getChatRooms } from "../api/chat";
-import { getDogs } from "../api/dog";
-import { completeProfile, getMyInfo } from "../api/member";
-import { getWalkSchedules } from "../api/walk";
+import { updateMyProfile, getMyDashboard } from "../api/member";
+import { cancelMyWalkParticipation } from "../api/walk";
 import { getAccessToken } from "../utils/token";
 import { formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
 
@@ -19,7 +17,7 @@ const initialForm = {
     introduction: "",
 };
 
-export default function ProfileCompletePage() {
+export default function MyPage() {
     const navigate = useNavigate();
 
     // 마이페이지 데이터 상태
@@ -41,21 +39,15 @@ export default function ProfileCompletePage() {
         try {
             setIsLoading(true);
 
-            const [memberResponse, dogsResponse, walksResponse, chatRoomsResponse] = await Promise.all([
-                getMyInfo(),
-                getDogs(),
-                getWalkSchedules(),
-                getChatRooms(),
-            ]);
-
-            const nextMember = memberResponse.data;
-            const walkSchedules = walksResponse.data;
+            const response = await getMyDashboard();
+            const dashboard = response.data;
+            const nextMember = dashboard.member;
 
             setMember(nextMember);
-            setDogs(dogsResponse.data);
-            setMyWalks(walkSchedules.filter((schedule) => schedule.hostMemberId === nextMember.memberId));
-            setMyParticipations(walkSchedules.filter((schedule) => Boolean(schedule.myParticipantStatus)));
-            setChatRooms(chatRoomsResponse.data);
+            setDogs(dashboard.dogs);
+            setMyWalks(dashboard.myWalkSchedules);
+            setMyParticipations(dashboard.myParticipations);
+            setChatRooms(dashboard.chatRooms);
             setForm({
                 realName: nextMember.realName || "",
                 nickname: nextMember.nickname || "",
@@ -98,14 +90,26 @@ export default function ProfileCompletePage() {
         }));
     };
 
+    // 내 참여 신청 취소
+    const handleCancelParticipation = async (walkScheduleId) => {
+        if (!window.confirm("산책 참여 신청을 취소할까요?")) {
+            return;
+        }
+
+        try {
+            await cancelMyWalkParticipation(walkScheduleId);
+
+            alert("산책 참여 신청이 취소되었습니다.");
+            await fetchMyPageData();
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 참여 신청 취소에 실패했습니다.");
+        }
+    };
+
     // 내 정보 저장
     const handleSubmit = async (event) => {
         event.preventDefault();
-
-        if (!form.realName.trim()) {
-            alert("실명을 입력해주세요.");
-            return;
-        }
 
         if (!form.nickname.trim()) {
             alert("닉네임을 입력해주세요.");
@@ -115,8 +119,7 @@ export default function ProfileCompletePage() {
         try {
             setIsSubmitting(true);
 
-            await completeProfile({
-                realName: form.realName.trim(),
+            await updateMyProfile({
                 nickname: form.nickname.trim(),
                 phoneNumber: form.phoneNumber.trim(),
                 region: form.region.trim(),
@@ -230,9 +233,10 @@ export default function ProfileCompletePage() {
                                     {myParticipations.slice(0, 4).map((schedule) => (
                                         <WalkRow
                                             key={schedule.walkScheduleId}
-                                            schedule={schedule}
+                                            participation={schedule}
                                             showParticipantStatus
                                             onClick={() => navigate(`/walks/${schedule.walkScheduleId}`)}
+                                            onCancel={() => handleCancelParticipation(schedule.walkScheduleId)}
                                         />
                                     ))}
                                 </div>
@@ -279,18 +283,18 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
 
             <div className="grid gap-4">
                 <Field label="실명">
-                    <input
-                        name="realName"
+                    <input name="realName"
                         value={form.realName}
-                        onChange={onChange}
-                        className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                        placeholder="실명을 입력해주세요"
+                        disabled
+                        className="h-12 border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500 cursor-not-allowed"
                     />
+                    <p className="text-xs font-normal text-gray-400">
+                        실명은 가입 후 변경할 수 없습니다.
+                    </p>
                 </Field>
 
                 <Field label="닉네임">
-                    <input
-                        name="nickname"
+                    <input name="nickname"
                         value={form.nickname}
                         onChange={onChange}
                         className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
@@ -299,8 +303,7 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
                 </Field>
 
                 <Field label="전화번호">
-                    <input
-                        name="phoneNumber"
+                    <input name="phoneNumber"
                         value={form.phoneNumber}
                         onChange={onChange}
                         className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
@@ -309,8 +312,7 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
                 </Field>
 
                 <Field label="거주 지역">
-                    <input
-                        name="region"
+                    <input name="region"
                         value={form.region}
                         onChange={onChange}
                         className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
@@ -319,8 +321,7 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
                 </Field>
 
                 <Field label="자기소개">
-                    <textarea
-                        name="introduction"
+                    <textarea name="introduction"
                         value={form.introduction}
                         onChange={onChange}
                         className="min-h-28 resize-none border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-black"
@@ -371,8 +372,7 @@ function DashboardSection({ title, count, emptyText, actionLabel, onAction, chil
                     <p className="mt-1 text-sm text-gray-500">총 {count}건</p>
                 </div>
 
-                <button
-                    type="button"
+                <button type="button"
                     onClick={onAction}
                     className="h-10 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
                 >
@@ -392,8 +392,7 @@ function DashboardSection({ title, count, emptyText, actionLabel, onAction, chil
 // 반려견 카드
 function DogCard({ dog, onClick }) {
     return (
-        <button
-            type="button"
+        <button type="button"
             onClick={onClick}
             className="border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg"
         >
@@ -414,39 +413,48 @@ function DogCard({ dog, onClick }) {
 }
 
 // 산책 행
-function WalkRow({ schedule, showParticipantStatus = false, onClick }) {
+function WalkRow({ schedule, participation, showParticipantStatus = false, onClick, onCancel }) {
+    const item = schedule || participation;
+    const canCancel = Boolean(participation && ["REQUESTED", "APPROVED"].includes(participation.status));
+
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="grid gap-4 border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg md:grid-cols-[1fr_auto]"
-        >
-            <div className="min-w-0">
+        <div className="grid gap-4 border border-gray-200 p-5 transition hover:border-gray-950 hover:shadow-lg md:grid-cols-[1fr_auto]">
+            <button type="button" onClick={onClick} className="min-w-0 text-left">
                 <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={schedule.status} />
+                    {schedule && <StatusBadge status={item.status} />}
                     {showParticipantStatus && (
-                        <InfoBadge label={formatParticipantStatus(schedule.myParticipantStatus)} tone="blue" />
+                        <InfoBadge label={formatParticipantStatus(item.status)} tone="blue" />
                     )}
                 </div>
-                <h3 className="mt-3 truncate text-lg font-bold text-gray-950">{schedule.title}</h3>
-                <p className="mt-1 truncate text-sm text-gray-500">{schedule.meetingPlace}</p>
-            </div>
+                <h3 className="mt-3 truncate text-lg font-bold text-gray-950">{item.title}</h3>
+                <p className="mt-1 truncate text-sm text-gray-500">{item.meetingPlace}</p>
+            </button>
 
-            <div className="text-sm text-gray-500 md:text-right">
-                <p>{formatDateTime(schedule.scheduledAt)}</p>
+            <div className="min-w-0">
+                <div className="text-sm text-gray-500 md:text-right">
+                <p>{formatDateTime(item.scheduledAt)}</p>
                 <p className="mt-1 font-semibold text-gray-900">
-                    {schedule.currentParticipantCount}/{schedule.maxParticipants}명
+                    {item.currentParticipantCount}/{item.maxParticipants}명
                 </p>
+                </div>
+
+                {canCancel && (
+                    <button type="button"
+                        onClick={onCancel}
+                        className="mt-3 h-9 w-full border border-red-100 text-sm font-bold text-red-500 transition hover:bg-red-50"
+                    >
+                        신청 취소
+                    </button>
+                )}
             </div>
-        </button>
+        </div>
     );
 }
 
 // 채팅방 행
 function ChatRoomRow({ chatRoom, onClick }) {
     return (
-        <button
-            type="button"
+        <button type="button"
             onClick={onClick}
             className="grid gap-4 border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg md:grid-cols-[1fr_auto]"
         >
