@@ -6,9 +6,11 @@ import Header from "../components/layout/Header";
 import { getChatRooms } from "../api/chat";
 import { getAccessToken } from "../utils/token";
 import { formatDateTime } from "../utils/walkFormat";
+import { useAuth } from "../hooks/useAuth";
 
 export default function ChatRoomsPage() {
     const navigate = useNavigate();
+    const { member } = useAuth();
 
     // 채팅방 목록 상태
     const [chatRooms, setChatRooms] = useState([]);
@@ -21,7 +23,7 @@ export default function ChatRoomsPage() {
 
             const response = await getChatRooms();
 
-            setChatRooms(response.data);
+            setChatRooms(sortChatRooms(response.data));
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "채팅방 목록 조회에 실패했습니다.");
@@ -99,6 +101,11 @@ export default function ChatRoomsPage() {
                                             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 ring-1 ring-emerald-100">
                                                 {chatRoom.status === "ACTIVE" ? "진행 중" : "종료"}
                                             </span>
+                                            {hasUnreadMessage(chatRoom, member?.memberId) && (
+                                                <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white">
+                                                    새 메시지
+                                                </span>
+                                            )}
                                         </div>
 
                                         <h2 className="mt-4 truncate text-2xl font-bold text-gray-950">
@@ -122,4 +129,33 @@ export default function ChatRoomsPage() {
             </main>
         </>
     );
+}
+
+// 채팅방 최신순 정렬
+function sortChatRooms(chatRooms) {
+    return [...chatRooms].sort((first, second) =>
+        getChatRoomTime(second) - getChatRoomTime(first)
+    );
+}
+
+// 채팅방 정렬 시간 조회
+function getChatRoomTime(chatRoom) {
+    if (!chatRoom.lastMessage?.createdAt) {
+        return 0;
+    }
+
+    return new Date(chatRoom.lastMessage.createdAt).getTime();
+}
+
+// 안 읽은 메시지 여부
+function hasUnreadMessage(chatRoom, memberId) {
+    if (!chatRoom.lastMessage || chatRoom.lastMessage.senderId === memberId) {
+        return false;
+    }
+
+    if (!chatRoom.lastReadMessageId) {
+        return true;
+    }
+
+    return chatRoom.lastMessage.chatMessageId > chatRoom.lastReadMessageId;
 }

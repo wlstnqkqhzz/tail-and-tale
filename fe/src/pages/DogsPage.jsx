@@ -20,6 +20,8 @@ const initialForm = {
 };
 
 const MAX_DOG_WEIGHT = 999.99;
+const WALK_CREATE_NOTICE_KEY = "walkCreateAccessNotice";
+const WALK_CREATE_NOTICE_LOCK_KEY = "walkCreateAccessNoticeLock";
 
 export default function DogsPage() {
     const navigate = useNavigate();
@@ -38,6 +40,23 @@ export default function DogsPage() {
     const [isVerifying, setIsVerifying] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [animalRegistrationNumber, setAnimalRegistrationNumber] = useState("");
+
+    // 접근 안내 메시지 표시
+    useEffect(() => {
+        const accessNotice = sessionStorage.getItem(WALK_CREATE_NOTICE_KEY);
+
+        if (!accessNotice) {
+            sessionStorage.removeItem(WALK_CREATE_NOTICE_LOCK_KEY);
+            return;
+        }
+
+        sessionStorage.removeItem(WALK_CREATE_NOTICE_KEY);
+        alert(accessNotice);
+
+        window.setTimeout(() => {
+            sessionStorage.removeItem(WALK_CREATE_NOTICE_LOCK_KEY);
+        }, 300);
+    }, []);
 
     // 반려견 상세 조회
     const fetchDogDetail = useCallback(async (dogId) => {

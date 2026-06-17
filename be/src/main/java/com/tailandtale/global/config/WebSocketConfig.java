@@ -95,6 +95,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (StompCommand.SUBSCRIBE == accessor.getCommand()) {
                         setAuthenticationFromSession(accessor);
                         validateChatRoomSubscribe(accessor);
+                        validateNotificationSubscribe(accessor);
 
                         return MessageBuilder.createMessage(
                                 message.getPayload(),
@@ -132,6 +133,27 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 }
             }
         });
+    }
+
+    // 알림 구독 권한 검증
+    private void validateNotificationSubscribe(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
+
+        if (destination == null || !destination.startsWith("/sub/notifications/")) {
+            return;
+        }
+
+        Long memberId = resolveMemberId(accessor);
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("WebSocket 인증 정보가 없습니다.");
+        }
+
+        Long destinationMemberId = Long.valueOf(destination.replace("/sub/notifications/", ""));
+
+        if (!memberId.equals(destinationMemberId)) {
+            throw new IllegalArgumentException("알림 구독 권한이 없습니다.");
+        }
     }
 
     // 채팅방 구독 권한 검증

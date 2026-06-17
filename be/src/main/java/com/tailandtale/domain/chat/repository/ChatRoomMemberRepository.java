@@ -29,6 +29,12 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
             ChatRoomMemberStatus status
     );
 
+    // 채팅방 활성 참여자 목록 조회
+    List<ChatRoomMember> findAllByChatRoomIdAndStatus(
+            Long chatRoomId,
+            ChatRoomMemberStatus status
+    );
+
     // 활성 참여 여부 확인
     boolean existsByChatRoomIdAndMemberIdAndStatus(
             Long chatRoomId,

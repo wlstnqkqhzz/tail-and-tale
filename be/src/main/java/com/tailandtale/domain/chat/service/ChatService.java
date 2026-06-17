@@ -7,6 +7,9 @@ import com.tailandtale.domain.chat.repository.ChatRoomMemberRepository;
 import com.tailandtale.domain.chat.repository.ChatRoomRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.notification.entity.NotificationTargetType;
+import com.tailandtale.domain.notification.entity.NotificationType;
+import com.tailandtale.domain.notification.service.NotificationService;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
 import com.tailandtale.domain.walk.repository.WalkParticipantRepository;
@@ -36,6 +39,7 @@ public class ChatService {
     private final WalkScheduleRepository walkScheduleRepository;
     private final WalkParticipantRepository walkParticipantRepository;
     private final MemberRepository memberRepository;
+    private final NotificationService notificationService;
 
     // 산책 생성 시 채팅방 생성
     @Transactional
@@ -113,13 +117,13 @@ public class ChatService {
     }
 
     // 메시지 목록 조회
-    public List<ChatDto.MessageResponse> getMessages(
+    public ChatDto.MessageListResponse getMessages(
             Long memberId,
             Long chatRoomId,
             Long cursor,
             Integer size
     ) {
-        validateActiveChatRoomMember(chatRoomId, memberId);
+        ChatRoomMember chatRoomMember = getActiveChatRoomMember(chatRoomId, memberId);
 
         int pageSize = getPageSize(size);
         List<ChatMessage> messages = cursor == null
@@ -129,9 +133,12 @@ public class ChatService {
         List<ChatMessage> orderedMessages = new ArrayList<>(messages);
         Collections.reverse(orderedMessages);
 
-        return orderedMessages.stream()
-                .map(ChatDto.MessageResponse::from)
-                .toList();
+        return ChatDto.MessageListResponse.builder()
+                .lastReadMessageId(chatRoomMember.getLastReadMessageId())
+                .messages(orderedMessages.stream()
+                        .map(ChatDto.MessageResponse::from)
+                        .toList())
+                .build();
     }
 
     // 메시지 전송
@@ -155,6 +162,7 @@ public class ChatService {
         );
 
         ChatMessage savedChatMessage = chatMessageRepository.save(chatMessage);
+        createChatMessageNotifications(chatRoom, member, savedChatMessage);
 
         return ChatDto.MessageResponse.from(savedChatMessage);
     }
@@ -285,6 +293,43 @@ public class ChatService {
         if (content.length() > 1000) {
             throw new CustomException(ChatErrorCode.CHAT_MESSAGE_TOO_LONG);
         }
+    }
+
+    // 채팅 메시지 알림 생성
+    private void createChatMessageNotifications(
+            ChatRoom chatRoom,
+            Member sender,
+            ChatMessage chatMessage
+    ) {
+        chatRoomMemberRepository.findAllByChatRoomIdAndStatus(
+                        chatRoom.getId(),
+                        ChatRoomMemberStatus.ACTIVE
+                )
+                .stream()
+                .filter(chatRoomMember -> !chatRoomMember.getMember().getId().equals(sender.getId()))
+                .forEach(chatRoomMember -> notificationService.createNotification(
+                        chatRoomMember.getMember(),
+                        NotificationType.CHAT_MESSAGE,
+                        "새 채팅 메시지가 도착했습니다.",
+                        sender.getNickname() + "님: " + summarizeMessage(chatMessage.getContent()),
+                        NotificationTargetType.CHAT_ROOM,
+                        chatRoom.getId()
+                ));
+    }
+
+    // 채팅 메시지 알림 내용 축약
+    private String summarizeMessage(String content) {
+        if (content == null) {
+            return "";
+        }
+
+        String trimmedContent = content.trim();
+
+        if (trimmedContent.length() <= 40) {
+            return trimmedContent;
+        }
+
+        return trimmedContent.substring(0, 40) + "...";
     }
 
     // 최신 메시지 조회

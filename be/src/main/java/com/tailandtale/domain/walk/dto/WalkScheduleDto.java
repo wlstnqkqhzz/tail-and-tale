@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class WalkScheduleDto {
 
     // 산책 일정 검색 조건 DTO
     @Getter
+    @Setter
     @NoArgsConstructor
     public static class SearchCondition {
         private String keyword;

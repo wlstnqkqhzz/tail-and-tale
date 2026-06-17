@@ -26,11 +26,11 @@ export default function OAuth2RedirectPage() {
         }
 
         if (status === "PENDING") {
-            navigate("/profile-complete");
+            navigate("/oauth2/profile-complete", { replace: true });
             return;
         }
 
-        navigate("/");
+        navigate("/", { replace: true });
     }, [navigate]);
 
     return (

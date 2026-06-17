@@ -1,6 +1,6 @@
 // 산책 게시글 목록 페이지
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
@@ -18,54 +18,63 @@ const initialFilters = {
     recruitableOnly: false,
 };
 
+// URL 검색 조건을 입력 폼 상태로 변환
+const createFiltersFromSearchParams = (searchParams) => ({
+    ...initialFilters,
+    keyword: searchParams.get("keyword") || "",
+    region: searchParams.get("region") || "",
+    status: searchParams.get("status") || "",
+    preferredDogSize: searchParams.get("preferredDogSize") || "",
+    scheduledFrom: searchParams.get("scheduledFrom") || "",
+    scheduledTo: searchParams.get("scheduledTo") || "",
+    recruitableOnly: searchParams.get("recruitableOnly") === "true",
+});
+
+// API 검색 파라미터 생성
+const createScheduleSearchParams = (filters) => {
+    const params = {};
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value !== "" && value !== false) {
+            params[key] = value;
+        }
+    });
+
+    return params;
+};
+
 export default function WalksPage() {
     const navigate = useNavigate();
     const [urlSearchParams, setUrlSearchParams] = useSearchParams();
 
     // 산책 목록 상태
     const [walkSchedules, setWalkSchedules] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [isSearching, setIsSearching] = useState(false);
 
     // 검색 필터 상태
-    const [filters, setFilters] = useState(() => ({
-        ...initialFilters,
-        keyword: urlSearchParams.get("keyword") || "",
-        region: urlSearchParams.get("region") || "",
-        status: urlSearchParams.get("status") || "",
-        preferredDogSize: urlSearchParams.get("preferredDogSize") || "",
-        scheduledFrom: urlSearchParams.get("scheduledFrom") || "",
-        scheduledTo: urlSearchParams.get("scheduledTo") || "",
-        recruitableOnly: urlSearchParams.get("recruitableOnly") === "true",
-    }));
-
-    // 검색 파라미터 생성
-    const scheduleSearchParams = useMemo(() => {
-        const params = {};
-
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value !== "" && value !== false) {
-                params[key] = value;
-            }
-        });
-
-        return params;
-    }, [filters]);
+    const [filters, setFilters] = useState(() => createFiltersFromSearchParams(urlSearchParams));
 
     // 산책 게시글 목록 조회
-    const fetchSchedules = useCallback(async () => {
+    const fetchSchedules = useCallback(async (searchParams = {}, showInitialLoading = false) => {
         try {
-            setIsLoading(true);
+            if (showInitialLoading) {
+                setIsInitialLoading(true);
+            } else {
+                setIsSearching(true);
+            }
 
-            const response = await getWalkSchedules(scheduleSearchParams);
+            const response = await getWalkSchedules(searchParams);
 
             setWalkSchedules(response.data);
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "산책 게시글 목록 조회에 실패했습니다.");
         } finally {
-            setIsLoading(false);
+            setIsInitialLoading(false);
+            setIsSearching(false);
         }
-    }, [scheduleSearchParams]);
+    }, []);
 
     // 비로그인 접근 방지 및 초기 조회
     useEffect(() => {
@@ -76,7 +85,7 @@ export default function WalksPage() {
         }
 
         const timerId = window.setTimeout(() => {
-            fetchSchedules();
+            fetchSchedules(createScheduleSearchParams(createFiltersFromSearchParams(urlSearchParams)), true);
         }, 0);
 
         return () => {
@@ -97,14 +106,18 @@ export default function WalksPage() {
     // 검색
     const handleSearch = (event) => {
         event.preventDefault();
-        setUrlSearchParams(scheduleSearchParams);
-        fetchSchedules();
+
+        const nextSearchParams = createScheduleSearchParams(filters);
+
+        setUrlSearchParams(nextSearchParams);
+        fetchSchedules(nextSearchParams);
     };
 
     // 검색 초기화
     const resetFilters = () => {
         setFilters(initialFilters);
         setUrlSearchParams({});
+        fetchSchedules({});
     };
 
     return (
@@ -169,8 +182,6 @@ export default function WalksPage() {
                             <option value="">상태 전체</option>
                             <option value="OPEN">모집 중</option>
                             <option value="CLOSED">모집 마감</option>
-                            <option value="CANCELED">취소</option>
-                            <option value="COMPLETED">완료</option>
                         </select>
 
                         <select
@@ -207,9 +218,10 @@ export default function WalksPage() {
                             </button>
                             <button
                                 type="submit"
+                                disabled={isSearching}
                                 className="h-12 bg-black px-5 text-sm font-bold text-white transition hover:opacity-80"
                             >
-                                검색
+                                {isSearching ? "검색 중" : "검색"}
                             </button>
                         </div>
                     </form>
@@ -220,7 +232,7 @@ export default function WalksPage() {
                         </p>
                     </div>
 
-                    {isLoading ? (
+                    {isInitialLoading ? (
                         <div className="flex h-80 items-center justify-center border-b border-gray-100 text-sm text-gray-400">
                             불러오는 중...
                         </div>
@@ -247,11 +259,15 @@ export default function WalksPage() {
 
 // 산책 게시글 카드
 function WalkScheduleCard({ schedule, onClick }) {
+    const hasMyStatus = Boolean(schedule.myParticipantStatus);
+
     return (
         <button
             type="button"
             onClick={onClick}
-            className="group flex min-h-72 flex-col justify-between border border-gray-200 bg-white p-6 text-left transition hover:-translate-y-1 hover:border-gray-950 hover:shadow-xl"
+            className={`group flex min-h-72 flex-col justify-between border bg-white p-6 text-left transition hover:-translate-y-1 hover:border-gray-950 hover:shadow-xl ${
+                hasMyStatus ? "border-emerald-300 ring-1 ring-emerald-100" : "border-gray-200"
+            }`}
         >
             <div>
                 <div className="flex items-start justify-between gap-4">
@@ -285,7 +301,7 @@ function WalkScheduleCard({ schedule, onClick }) {
                     )}
                     {schedule.myParticipantStatus && (
                         <InfoBadge
-                            label={`내 상태 ${formatParticipantStatus(schedule.myParticipantStatus)}`}
+                            label={`내 신청 ${formatParticipantStatus(schedule.myParticipantStatus)}`}
                             tone="blue"
                         />
                     )}

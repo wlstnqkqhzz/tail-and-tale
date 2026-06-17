@@ -39,7 +39,7 @@ public class ChatController {
 
     // 채팅 메시지 목록 조회
     @GetMapping("/api/chat/rooms/{chatRoomId}/messages")
-    public ResponseEntity<List<ChatDto.MessageResponse>> getMessages(
+    public ResponseEntity<ChatDto.MessageListResponse> getMessages(
             @PathVariable Long chatRoomId,
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer size

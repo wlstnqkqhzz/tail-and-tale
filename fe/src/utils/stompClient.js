@@ -93,6 +93,83 @@ export function createChatStompClient({
     };
 }
 
+export function createNotificationStompClient({
+    memberId,
+    accessToken,
+    onConnect,
+    onNotification,
+    onError,
+}) {
+    const webSocketUrl = getWebSocketUrl();
+    const socket = new WebSocket(webSocketUrl);
+
+    socket.onopen = () => {
+        socket.send(buildFrame("CONNECT", {
+            "accept-version": "1.2",
+            "heart-beat": "10000,10000",
+            Authorization: `Bearer ${accessToken}`,
+        }));
+    };
+
+    socket.onmessage = (event) => {
+        const frames = String(event.data)
+            .split(NULL_CHAR)
+            .filter((frame) => frame.trim() !== "");
+
+        frames.forEach((frame) => {
+            const parsedFrame = parseFrame(frame);
+
+            if (parsedFrame.command === "CONNECTED") {
+                socket.send(buildFrame("SUBSCRIBE", {
+                    id: `notifications-${memberId}`,
+                    destination: `/sub/notifications/${memberId}`,
+                }));
+                onConnect?.();
+                return;
+            }
+
+            if (parsedFrame.command === "MESSAGE") {
+                onNotification?.(JSON.parse(parsedFrame.body));
+                return;
+            }
+
+            if (parsedFrame.command === "ERROR") {
+                console.error("[notification-websocket] stomp error", {
+                    memberId,
+                    webSocketUrl,
+                    frame: parsedFrame,
+                });
+                onError?.(parsedFrame.body || "알림 연결 중 오류가 발생했습니다.");
+            }
+        });
+    };
+
+    socket.onerror = (event) => {
+        console.error("[notification-websocket] socket error", event);
+        onError?.("알림 서버 연결에 실패했습니다.");
+    };
+
+    socket.onclose = (event) => {
+        if (!event.wasClean && event.code !== 1000) {
+            console.warn("[notification-websocket] closed", {
+                memberId,
+                code: event.code,
+                reason: event.reason,
+            });
+        }
+    };
+
+    return {
+        disconnect() {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(buildFrame("DISCONNECT", {}));
+            }
+
+            socket.close();
+        },
+    };
+}
+
 function getWebSocketUrl() {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 

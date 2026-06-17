@@ -17,6 +17,13 @@ const initialForm = {
     introduction: "",
 };
 
+const dashboardTabs = [
+    { key: "dogs", label: "내 반려견" },
+    { key: "walks", label: "작성 글" },
+    { key: "participations", label: "참여 신청" },
+    { key: "chats", label: "채팅방" },
+];
+
 export default function MyPage() {
     const navigate = useNavigate();
 
@@ -29,6 +36,7 @@ export default function MyPage() {
 
     // 입력 폼 상태
     const [form, setForm] = useState(initialForm);
+    const [activeDashboardTab, setActiveDashboardTab] = useState("dogs");
 
     // 요청 상태
     const [isLoading, setIsLoading] = useState(true);
@@ -190,85 +198,122 @@ export default function MyPage() {
                                 chatRooms={chatRooms}
                             />
 
-                            <DashboardSection
-                                title="내 반려견"
-                                count={dogs.length}
-                                emptyText="등록된 반려견이 없습니다."
-                                actionLabel="반려견 관리"
-                                onAction={() => navigate("/dogs")}
-                            >
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    {dogs.slice(0, 4).map((dog) => (
-                                        <DogCard key={dog.dogId} dog={dog} onClick={() => navigate("/dogs")} />
-                                    ))}
-                                </div>
-                            </DashboardSection>
+                            <DashboardTabs
+                                activeTab={activeDashboardTab}
+                                onChange={setActiveDashboardTab}
+                            />
 
-                            <DashboardSection
-                                title="내가 쓴 산책 글"
-                                count={myWalks.length}
-                                emptyText="작성한 산책 글이 없습니다."
-                                actionLabel="산책 글 작성"
-                                onAction={() => navigate("/walks/new")}
-                            >
-                                <div className="grid gap-3">
-                                    {myWalks.slice(0, 4).map((schedule) => (
-                                        <WalkRow
-                                            key={schedule.walkScheduleId}
-                                            schedule={schedule}
-                                            onClick={() => navigate(`/walks/${schedule.walkScheduleId}`)}
-                                        />
-                                    ))}
-                                </div>
-                            </DashboardSection>
+                            {activeDashboardTab === "dogs" && (
+                                <DashboardSection
+                                    title="내 반려견"
+                                    count={dogs.length}
+                                    emptyText="등록된 반려견이 없습니다."
+                                    actionLabel="반려견 관리"
+                                    onAction={() => navigate("/dogs")}
+                                >
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        {dogs.slice(0, 4).map((dog) => (
+                                            <DogCard key={dog.dogId} dog={dog} onClick={() => navigate("/dogs")} />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
 
-                            <DashboardSection
-                                title="내 참여 신청"
-                                count={myParticipations.length}
-                                emptyText="참여 신청한 산책이 없습니다."
-                                actionLabel="산책 둘러보기"
-                                onAction={() => navigate("/walks")}
-                            >
-                                <div className="grid gap-3">
-                                    {myParticipations.slice(0, 4).map((schedule) => (
-                                        <WalkRow
-                                            key={schedule.walkScheduleId}
-                                            participation={schedule}
-                                            showParticipantStatus
-                                            onClick={() => navigate(`/walks/${schedule.walkScheduleId}`)}
-                                            onCancel={() => handleCancelParticipation(schedule.walkScheduleId)}
-                                        />
-                                    ))}
-                                </div>
-                            </DashboardSection>
+                            {activeDashboardTab === "walks" && (
+                                <DashboardSection
+                                    title="내가 쓴 산책 글"
+                                    count={myWalks.length}
+                                    emptyText="작성한 산책 글이 없습니다."
+                                    actionLabel="산책 글 작성"
+                                    onAction={() => navigate("/walks/new")}
+                                >
+                                    <div className="grid gap-3">
+                                        {myWalks.slice(0, 4).map((schedule) => (
+                                            <WalkRow
+                                                key={schedule.walkScheduleId}
+                                                schedule={schedule}
+                                                onClick={() => navigate(`/walks/${schedule.walkScheduleId}`)}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
 
-                            <DashboardSection
-                                title="내 채팅창"
-                                count={chatRooms.length}
-                                emptyText="입장 가능한 채팅방이 없습니다."
-                                actionLabel="채팅 목록"
-                                onAction={() => navigate("/chat/rooms")}
-                            >
-                                <div className="grid gap-3">
-                                    {chatRooms.slice(0, 4).map((chatRoom) => (
-                                        <ChatRoomRow
-                                            key={chatRoom.chatRoomId}
-                                            chatRoom={chatRoom}
-                                            onClick={() => navigate(`/chat/rooms/${chatRoom.chatRoomId}`, {
-                                                state: {
-                                                    walkTitle: chatRoom.walkTitle,
-                                                    walkScheduleId: chatRoom.walkScheduleId,
-                                                },
-                                            })}
-                                        />
-                                    ))}
-                                </div>
-                            </DashboardSection>
+                            {activeDashboardTab === "participations" && (
+                                <DashboardSection
+                                    title="내 참여 신청"
+                                    count={myParticipations.length}
+                                    emptyText="참여 신청한 산책이 없습니다."
+                                    actionLabel="산책 둘러보기"
+                                    onAction={() => navigate("/walks")}
+                                >
+                                    <div className="grid gap-3">
+                                        {myParticipations.slice(0, 4).map((schedule) => (
+                                            <WalkRow
+                                                key={schedule.walkScheduleId}
+                                                participation={schedule}
+                                                showParticipantStatus
+                                                onClick={() => navigate(`/walks/${schedule.walkScheduleId}`)}
+                                                onCancel={() => handleCancelParticipation(schedule.walkScheduleId)}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {activeDashboardTab === "chats" && (
+                                <DashboardSection
+                                    title="내 채팅창"
+                                    count={chatRooms.length}
+                                    emptyText="입장 가능한 채팅방이 없습니다."
+                                    actionLabel="채팅 목록"
+                                    onAction={() => navigate("/chat/rooms")}
+                                >
+                                    <div className="grid gap-3">
+                                        {chatRooms.slice(0, 4).map((chatRoom) => (
+                                            <ChatRoomRow
+                                                key={chatRoom.chatRoomId}
+                                                chatRoom={chatRoom}
+                                                onClick={() => navigate(`/chat/rooms/${chatRoom.chatRoomId}`, {
+                                                    state: {
+                                                        walkTitle: chatRoom.walkTitle,
+                                                        walkScheduleId: chatRoom.walkScheduleId,
+                                                    },
+                                                })}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
                         </div>
                     </section>
                 )}
             </main>
         </>
+    );
+}
+
+// 대시보드 탭
+function DashboardTabs({ activeTab, onChange }) {
+    return (
+        <div className="border-b border-gray-200">
+            <div className="grid grid-cols-2 md:grid-cols-4">
+                {dashboardTabs.map((tab) => (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => onChange(tab.key)}
+                        className={`h-14 border-b-2 text-sm font-bold transition ${
+                            activeTab === tab.key
+                                ? "border-black text-black"
+                                : "border-transparent text-gray-400 hover:text-gray-700"
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -353,9 +398,9 @@ function SummaryGrid({ dogs, myWalks, myParticipations, chatRooms }) {
     return (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {items.map((item) => (
-                <div key={item.label} className="border border-gray-200 p-5">
+                <div key={item.label} className="flex h-36 flex-col justify-between border border-gray-200 p-5">
                     <p className="text-sm font-bold text-gray-400">{item.label}</p>
-                    <p className="mt-3 text-4xl font-bold text-gray-950">{item.value}</p>
+                    <p className="text-4xl font-bold leading-none text-gray-950">{item.value}</p>
                 </div>
             ))}
         </div>
@@ -365,7 +410,7 @@ function SummaryGrid({ dogs, myWalks, myParticipations, chatRooms }) {
 // 대시보드 영역
 function DashboardSection({ title, count, emptyText, actionLabel, onAction, children }) {
     return (
-        <section className="border-t border-gray-200 pt-8">
+        <section className="pt-8">
             <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-950">{title}</h2>

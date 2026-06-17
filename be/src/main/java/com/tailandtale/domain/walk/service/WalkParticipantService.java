@@ -5,6 +5,9 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.notification.entity.NotificationTargetType;
+import com.tailandtale.domain.notification.entity.NotificationType;
+import com.tailandtale.domain.notification.service.NotificationService;
 import com.tailandtale.domain.walk.dto.WalkParticipantDto;
 import com.tailandtale.domain.walk.entity.WalkParticipant;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
@@ -30,6 +33,7 @@ public class WalkParticipantService {
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
     private final ChatService chatService;
+    private final NotificationService notificationService;
 
     // 산책 참여 신청
     @Transactional
@@ -64,6 +68,15 @@ public class WalkParticipantService {
 
         WalkParticipant savedWalkParticipant = walkParticipantRepository.save(walkParticipant);
 
+        notificationService.createNotification(
+                walkSchedule.getHostMember(),
+                NotificationType.WALK_REQUESTED,
+                "새 산책 참여 신청",
+                member.getNickname() + "님이 '" + walkSchedule.getTitle() + "' 산책에 참여를 신청했습니다.",
+                NotificationTargetType.WALK_SCHEDULE,
+                walkSchedule.getId()
+        );
+
         return WalkParticipantDto.Response.from(savedWalkParticipant);
     }
 
@@ -87,6 +100,14 @@ public class WalkParticipantService {
 
         walkParticipant.approve();
         chatService.addParticipant(walkSchedule, walkParticipant.getMember());
+        notificationService.createNotification(
+                walkParticipant.getMember(),
+                NotificationType.WALK_APPROVED,
+                "산책 참여 신청 승인",
+                "'" + walkSchedule.getTitle() + "' 산책 참여 신청이 승인되었습니다.",
+                NotificationTargetType.WALK_SCHEDULE,
+                walkSchedule.getId()
+        );
 
         if (getTotalParticipantCountAfterApprove(approvedParticipantCount) == walkSchedule.getMaxParticipants()) {
             walkSchedule.close();
@@ -109,6 +130,14 @@ public class WalkParticipantService {
         validateRequested(walkParticipant);
 
         walkParticipant.reject();
+        notificationService.createNotification(
+                walkParticipant.getMember(),
+                NotificationType.WALK_REJECTED,
+                "산책 참여 신청 거절",
+                "'" + walkSchedule.getTitle() + "' 산책 참여 신청이 거절되었습니다.",
+                NotificationTargetType.WALK_SCHEDULE,
+                walkSchedule.getId()
+        );
 
         return WalkParticipantDto.Response.from(walkParticipant);
     }

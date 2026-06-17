@@ -1,6 +1,7 @@
 package com.tailandtale.global.config;
 
 import com.tailandtale.global.jwt.JwtFilter;
+import com.tailandtale.global.jwt.PendingMemberFilter;
 import com.tailandtale.global.oauth.CookieOAuth2AuthorizationRequestRepository;
 import com.tailandtale.global.oauth.OAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,6 +34,9 @@ import java.util.List;
 public class SecurityConfig {
     // JWT 인증 필터
     private final JwtFilter jwtFilter;
+
+    // OAuth 추가 정보 입력 전 API 접근 제한 필터
+    private final PendingMemberFilter pendingMemberFilter;
 
     @Value("${app.frontend-url}")
     private String frontendBaseUrl;
@@ -102,6 +106,10 @@ public class SecurityConfig {
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class
+                )
+                .addFilterAfter(
+                        pendingMemberFilter,
+                        JwtFilter.class
                 );
 
         return http.build();

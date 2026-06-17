@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // 채팅 DTO
 
@@ -54,6 +55,14 @@ public class ChatDto {
     @NoArgsConstructor
     public static class ReadRequest {
         private Long lastReadMessageId;
+    }
+
+    // 메시지 목록 응답 DTO
+    @Getter
+    @Builder
+    public static class MessageListResponse {
+        private Long lastReadMessageId;
+        private List<MessageResponse> messages;
     }
 
     // 메시지 응답 DTO

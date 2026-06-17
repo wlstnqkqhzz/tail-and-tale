@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import { getChatMessages, readChatRoom } from "../api/chat";
+import { readTargetNotifications } from "../api/notification";
 import { useAuth } from "../hooks/useAuth";
 import { getAccessToken } from "../utils/token";
 import { createChatStompClient } from "../utils/stompClient";
@@ -17,10 +18,13 @@ export default function ChatRoomPage() {
     const messageListRef = useRef(null);
     const messageInputRef = useRef(null);
     const stompClientRef = useRef(null);
+    const messageItemRefs = useRef({});
+    const hasInitialScrolledRef = useRef(false);
 
     // 채팅 상태
     const [messages, setMessages] = useState([]);
     const [content, setContent] = useState("");
+    const [unreadStartMessageId, setUnreadStartMessageId] = useState(null);
 
     // 요청 및 연결 상태
     const [isLoading, setIsLoading] = useState(true);
@@ -39,15 +43,24 @@ export default function ChatRoomPage() {
                 size: 50,
             });
 
-            setMessages(response.data);
+            const nextMessages = response.data.messages;
+            const firstUnreadMessage = findFirstUnreadMessage(
+                nextMessages,
+                response.data.lastReadMessageId
+            );
 
-            const lastMessage = response.data.at(-1);
+            setMessages(nextMessages);
+            setUnreadStartMessageId(firstUnreadMessage?.chatMessageId || null);
+
+            const lastMessage = nextMessages.at(-1);
 
             if (lastMessage) {
                 await readChatRoom(chatRoomId, {
                     lastReadMessageId: lastMessage.chatMessageId,
                 });
             }
+
+            await readTargetNotifications("CHAT_ROOM", chatRoomId);
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "채팅 메시지 조회에 실패했습니다.");
@@ -110,9 +123,20 @@ export default function ChatRoomPage() {
         };
     }, [chatRoomId]);
 
-    // 메시지 하단 스크롤
+    // 메시지 위치 스크롤
     useEffect(() => {
         const timerId = window.setTimeout(() => {
+            if (!hasInitialScrolledRef.current) {
+                hasInitialScrolledRef.current = true;
+
+                if (unreadStartMessageId && messageItemRefs.current[unreadStartMessageId]) {
+                    messageItemRefs.current[unreadStartMessageId].scrollIntoView({
+                        block: "center",
+                    });
+                    return;
+                }
+            }
+
             messageListRef.current?.scrollTo({
                 top: messageListRef.current.scrollHeight,
                 behavior: "smooth",
@@ -122,7 +146,7 @@ export default function ChatRoomPage() {
         return () => {
             window.clearTimeout(timerId);
         };
-    }, [messages]);
+    }, [messages, unreadStartMessageId]);
 
     // 메시지 전송
     const handleSubmit = (event) => {
@@ -148,8 +172,8 @@ export default function ChatRoomPage() {
         <>
             <Header />
 
-            <main className="flex min-h-screen flex-col bg-white pt-20">
-                <section className="border-b border-gray-100 px-8 py-6">
+            <main className="flex h-screen flex-col overflow-hidden bg-white pt-20">
+                <section className="shrink-0 border-b border-gray-100 px-8 py-6">
                     <div className="mx-auto flex max-w-5xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <button
@@ -177,33 +201,45 @@ export default function ChatRoomPage() {
                     </div>
                 </section>
 
-                <section className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-8 py-6">
+                <section className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-8 py-4">
                     <div
                         ref={messageListRef}
-                        className="min-h-[520px] flex-1 overflow-y-auto border border-gray-200 bg-gray-50 p-5"
+                        className="min-h-0 flex-1 overflow-y-auto border border-gray-200 bg-gray-50 p-5"
                     >
                         {isLoading ? (
-                            <div className="flex h-full min-h-96 items-center justify-center text-sm text-gray-400">
+                            <div className="flex h-full items-center justify-center text-sm text-gray-400">
                                 메시지를 불러오는 중...
                             </div>
                         ) : messages.length === 0 ? (
-                            <div className="flex h-full min-h-96 items-center justify-center text-sm text-gray-400">
+                            <div className="flex h-full items-center justify-center text-sm text-gray-400">
                                 아직 메시지가 없습니다.
                             </div>
                         ) : (
                             <div className="grid gap-4">
                                 {messages.map((message) => (
-                                    <ChatMessageItem
+                                    <div
                                         key={message.chatMessageId}
-                                        message={message}
-                                        isMine={message.senderId === member?.memberId}
-                                    />
+                                        ref={(element) => {
+                                            if (element) {
+                                                messageItemRefs.current[message.chatMessageId] = element;
+                                            }
+                                        }}
+                                    >
+                                        {message.chatMessageId === unreadStartMessageId && (
+                                            <UnreadMessageDivider />
+                                        )}
+
+                                        <ChatMessageItem
+                                            message={message}
+                                            isMine={message.senderId === member?.memberId}
+                                        />
+                                    </div>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-[1fr_auto] gap-3">
+                    <form onSubmit={handleSubmit} className="mt-4 grid shrink-0 grid-cols-[1fr_auto] gap-3">
                         <input
                             ref={messageInputRef}
                             value={content}
@@ -225,6 +261,28 @@ export default function ChatRoomPage() {
                 </section>
             </main>
         </>
+    );
+}
+
+// 첫 안 읽은 메시지 조회
+function findFirstUnreadMessage(messages, lastReadMessageId) {
+    if (!lastReadMessageId) {
+        return null;
+    }
+
+    return messages.find((message) => message.chatMessageId > lastReadMessageId);
+}
+
+// 안 읽은 메시지 구분선
+function UnreadMessageDivider() {
+    return (
+        <div className="my-2 flex items-center gap-3">
+            <div className="h-px flex-1 bg-emerald-200" />
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600 ring-1 ring-emerald-100">
+                여기부터 안 읽은 메시지
+            </span>
+            <div className="h-px flex-1 bg-emerald-200" />
+        </div>
     );
 }
 

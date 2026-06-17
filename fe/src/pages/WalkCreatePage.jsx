@@ -1,6 +1,6 @@
 // 산책 게시글 작성 페이지
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import { getDogs } from "../api/dog";
@@ -22,8 +22,12 @@ const initialForm = {
     preferredPersonality: "",
 };
 
+const WALK_CREATE_NOTICE_KEY = "walkCreateAccessNotice";
+const WALK_CREATE_NOTICE_LOCK_KEY = "walkCreateAccessNoticeLock";
+
 export default function WalkCreatePage() {
     const navigate = useNavigate();
+    const hasBlockedAccessRef = useRef(false);
 
     // 작성 입력 상태
     const [form, setForm] = useState(initialForm);
@@ -33,6 +37,18 @@ export default function WalkCreatePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const verifiedDogs = dogs.filter((dog) => dog.isVerified);
+
+    // 작성 접근 차단
+    const blockWalkCreateAccess = useCallback((message) => {
+        if (hasBlockedAccessRef.current || sessionStorage.getItem(WALK_CREATE_NOTICE_LOCK_KEY)) {
+            return;
+        }
+
+        hasBlockedAccessRef.current = true;
+        sessionStorage.setItem(WALK_CREATE_NOTICE_LOCK_KEY, "true");
+        sessionStorage.setItem(WALK_CREATE_NOTICE_KEY, message);
+        navigate("/dogs", { replace: true });
+    }, [navigate]);
 
     // 내 반려견 목록 조회
     const fetchDogs = useCallback(async () => {
@@ -52,20 +68,18 @@ export default function WalkCreatePage() {
             }
 
             if (nextDogs.length === 0) {
-                alert("산책 글 작성을 위해 먼저 반려견을 등록해주세요.");
-                navigate("/dogs");
+                blockWalkCreateAccess("산책 글 작성을 위해 먼저 반려견을 등록해주세요.");
                 return;
             }
 
-            alert("산책 글 작성을 위해 먼저 반려견 인증을 진행해주세요.");
-            navigate("/dogs");
+            blockWalkCreateAccess("산책 글 작성을 위해 먼저 반려견 인증을 진행해주세요.");
         } catch (error) {
             console.error(error);
             alert("반려견 목록 조회에 실패했습니다.");
         } finally {
             setIsLoading(false);
         }
-    }, [navigate]);
+    }, [blockWalkCreateAccess]);
 
     // 비로그인 접근 방지 및 초기 조회
     useEffect(() => {
