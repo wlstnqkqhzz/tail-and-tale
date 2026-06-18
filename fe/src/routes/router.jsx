@@ -12,6 +12,10 @@ import WalkCreatePage from "../pages/WalkCreatePage";
 import ChatRoomsPage from "../pages/ChatRoomsPage";
 import ChatRoomPage from "../pages/ChatRoomPage";
 import CarePage from "../pages/CarePage";
+import CommunityListPage from "../pages/CommunityListPage";
+import CommunityWritePage from "../pages/CommunityWritePage";
+import CommunityDetailPage from "../pages/CommunityDetailPage";
+import CommunityEditPage from "../pages/CommunityEditPage";
 
 // 애플리케이션 라우터 설정
 
@@ -30,6 +34,10 @@ export const router = createBrowserRouter([
             { path: "/chat/rooms", element: <ChatRoomsPage />,},
             { path: "/chat/rooms/:chatRoomId", element: <ChatRoomPage />,},
             { path: "/care", element: <CarePage />,},
+            { path: "/community", element: <CommunityListPage />,},
+            { path: "/community/write", element: <CommunityWritePage />,},
+            { path: "/community/:communityPostId", element: <CommunityDetailPage />,},
+            { path: "/community/:communityPostId/edit", element: <CommunityEditPage />,},
         ],
     },
 ]);

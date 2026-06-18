@@ -43,9 +43,7 @@ public class WalkScheduleController {
 
     // 산책 일정 취소
     @PatchMapping("/{walkScheduleId}/cancel")
-    public ResponseEntity<WalkScheduleDto.DetailResponse> cancelSchedule(
-            @PathVariable Long walkScheduleId
-    ) {
+    public ResponseEntity<WalkScheduleDto.DetailResponse> cancelSchedule(@PathVariable Long walkScheduleId) {
         return ResponseEntity.ok(
                 walkScheduleService.cancelSchedule(
                         getLoginMemberId(),
@@ -56,9 +54,7 @@ public class WalkScheduleController {
 
     // 산책 모집 마감
     @PatchMapping("/{walkScheduleId}/close")
-    public ResponseEntity<WalkScheduleDto.DetailResponse> closeSchedule(
-            @PathVariable Long walkScheduleId
-    ) {
+    public ResponseEntity<WalkScheduleDto.DetailResponse> closeSchedule(@PathVariable Long walkScheduleId) {
         return ResponseEntity.ok(
                 walkScheduleService.closeSchedule(
                         getLoginMemberId(),
@@ -69,9 +65,7 @@ public class WalkScheduleController {
 
     // 산책 모집 재개
     @PatchMapping("/{walkScheduleId}/reopen")
-    public ResponseEntity<WalkScheduleDto.DetailResponse> reopenSchedule(
-            @PathVariable Long walkScheduleId
-    ) {
+    public ResponseEntity<WalkScheduleDto.DetailResponse> reopenSchedule(@PathVariable Long walkScheduleId) {
         return ResponseEntity.ok(
                 walkScheduleService.reopenSchedule(
                         getLoginMemberId(),

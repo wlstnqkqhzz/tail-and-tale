@@ -5,6 +5,8 @@ import com.tailandtale.domain.care.dto.EmotionDiaryDto;
 import com.tailandtale.domain.care.dto.HealthRecordDto;
 import com.tailandtale.domain.care.dto.WalkRecordDto;
 import com.tailandtale.domain.chat.dto.ChatDto;
+import com.tailandtale.domain.community.dto.CommunityCommentDto;
+import com.tailandtale.domain.community.dto.CommunityPostDto;
 import com.tailandtale.domain.dog.dto.DogDto;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
@@ -111,6 +113,8 @@ public class MemberDto {
         private List<EmotionDiaryDto.Response> emotionDiaries;
         private List<HealthRecordDto.Response> healthRecords;
         private List<AiAnalysisDto.Response> aiAnalyses;
+        private List<CommunityPostDto.ListResponse> communityPosts;
+        private List<CommunityCommentDto.Response> communityComments;
     }
 
     // 내 산책 참여 응답 DTO

@@ -22,6 +22,7 @@ const dashboardTabs = [
     { key: "walks", label: "작성 글" },
     { key: "participations", label: "참여 신청" },
     { key: "chats", label: "채팅방" },
+    { key: "community", label: "커뮤니티" },
     { key: "reviews", label: "산책 후기" },
     { key: "walkRecords", label: "산책 기록" },
     { key: "emotions", label: "감정 일기" },
@@ -78,6 +79,8 @@ export default function MyPage() {
     const [emotionDiaries, setEmotionDiaries] = useState([]);
     const [healthRecords, setHealthRecords] = useState([]);
     const [aiAnalyses, setAiAnalyses] = useState([]);
+    const [communityPosts, setCommunityPosts] = useState([]);
+    const [communityComments, setCommunityComments] = useState([]);
 
     // 입력 폼 상태
     const [form, setForm] = useState(initialForm);
@@ -107,6 +110,8 @@ export default function MyPage() {
             setEmotionDiaries(dashboard.emotionDiaries || []);
             setHealthRecords(dashboard.healthRecords || []);
             setAiAnalyses(dashboard.aiAnalyses || []);
+            setCommunityPosts(dashboard.communityPosts || []);
+            setCommunityComments(dashboard.communityComments || []);
             setForm({
                 realName: nextMember.realName || "",
                 nickname: nextMember.nickname || "",
@@ -253,6 +258,7 @@ export default function MyPage() {
                                 emotionDiaries={emotionDiaries}
                                 healthRecords={healthRecords}
                                 aiAnalyses={aiAnalyses}
+                                communityPosts={communityPosts}
                             />
 
                             <DashboardTabs
@@ -339,6 +345,34 @@ export default function MyPage() {
                                                 })}
                                             />
                                         ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {activeDashboardTab === "community" && (
+                                <DashboardSection
+                                    title="내 커뮤니티"
+                                    count={communityPosts.length + communityComments.length}
+                                    emptyText="작성한 커뮤니티 활동이 없습니다."
+                                    actionLabel="커뮤니티 보기"
+                                    onAction={() => navigate("/community")}
+                                >
+                                    <div className="grid gap-6">
+                                        <CommunityGroup
+                                            title="내가 쓴 글"
+                                            items={communityPosts}
+                                            emptyText="작성한 커뮤니티 글이 없습니다."
+                                            type="post"
+                                            onClick={(item) => navigate(`/community/${item.communityPostId}`)}
+                                        />
+
+                                        <CommunityGroup
+                                            title="내가 쓴 댓글"
+                                            items={communityComments}
+                                            emptyText="작성한 댓글이 없습니다."
+                                            type="comment"
+                                            onClick={(item) => navigate(`/community/${item.communityPostId}`)}
+                                        />
                                     </div>
                                 </DashboardSection>
                             )}
@@ -442,7 +476,7 @@ export default function MyPage() {
 function DashboardTabs({ activeTab, onChange }) {
     return (
         <div className="border-b border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-9">
+            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-10">
                 {dashboardTabs.map((tab) => (
                     <button
                         key={tab.key}
@@ -537,16 +571,18 @@ function SummaryGrid({
     myWalks = [],
     chatRooms = [],
     walkRecords = [],
+    communityPosts = [],
 }) {
     const items = [
         { label: "반려견", value: dogs.length },
         { label: "작성 글", value: myWalks.length },
+        { label: "커뮤니티", value: communityPosts.length },
         { label: "채팅방", value: chatRooms.length },
         { label: "산책 기록", value: walkRecords.length },
     ];
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {items.map((item) => (
                 <div key={item.label} className="flex h-36 flex-col items-center justify-between border border-gray-200 p-5">
                     <p className="w-full text-center whitespace-nowrap text-xs font-bold text-gray-400 2xl:text-sm">{item.label}</p>
@@ -706,6 +742,45 @@ function ReviewGroup({ title, reviews, emptyText, onClick }) {
                             </p>
                             <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">
                                 {review.content || "후기 내용이 없습니다."}
+                            </p>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// 커뮤니티 활동 그룹
+function CommunityGroup({ title, items, emptyText, type, onClick }) {
+    return (
+        <div>
+            <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-950">{title}</h3>
+                <span className="text-sm font-bold text-gray-400">{items.length}건</span>
+            </div>
+
+            {items.length === 0 ? (
+                <div className="flex h-24 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                    {emptyText}
+                </div>
+            ) : (
+                <div className="grid gap-3">
+                    {items.slice(0, 4).map((item) => (
+                        <button
+                            key={type === "post" ? item.communityPostId : item.commentId}
+                            type="button"
+                            onClick={() => onClick(item)}
+                            className="border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg"
+                        >
+                            <p className="text-sm font-bold text-gray-400">
+                                {formatDateOnly(item.createdAt)}
+                            </p>
+                            <h4 className="mt-2 line-clamp-1 text-lg font-bold text-gray-950">
+                                {type === "post" ? item.title : item.communityPostTitle}
+                            </h4>
+                            <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">
+                                {type === "post" ? `댓글 ${item.commentCount} · 추천 ${item.likeCount}` : item.content}
                             </p>
                         </button>
                     ))}

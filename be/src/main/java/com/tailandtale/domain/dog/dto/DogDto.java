@@ -129,5 +129,4 @@ public class DogDto {
         @NotBlank(message = "동물등록번호는 필수입니다.")
         private String animalRegistrationNumber;
     }
-
 }

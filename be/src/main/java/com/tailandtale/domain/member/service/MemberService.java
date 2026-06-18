@@ -5,6 +5,8 @@ import com.tailandtale.domain.care.service.EmotionDiaryService;
 import com.tailandtale.domain.care.service.HealthRecordService;
 import com.tailandtale.domain.care.service.WalkRecordService;
 import com.tailandtale.domain.chat.service.ChatService;
+import com.tailandtale.domain.community.service.CommunityCommentService;
+import com.tailandtale.domain.community.service.CommunityPostService;
 import com.tailandtale.domain.dog.dto.DogDto;
 import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.dto.LoginFormDto;
@@ -46,6 +48,8 @@ public class MemberService {
     private final EmotionDiaryService emotionDiaryService;
     private final HealthRecordService healthRecordService;
     private final AiAnalysisService aiAnalysisService;
+    private final CommunityPostService communityPostService;
+    private final CommunityCommentService communityCommentService;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -140,6 +144,8 @@ public class MemberService {
                 .emotionDiaries(emotionDiaryService.getRecentEmotionDiaries(memberId))
                 .healthRecords(healthRecordService.getRecentHealthRecords(memberId))
                 .aiAnalyses(aiAnalysisService.getRecentAnalyses(memberId))
+                .communityPosts(communityPostService.getRecentMyPosts(memberId))
+                .communityComments(communityCommentService.getRecentMyComments(memberId))
                 .build();
     }
 
