@@ -7,14 +7,18 @@ import {
     createAiAnalysis,
     createEmotionDiary,
     createHealthRecord,
+    createWalkRecord,
     deleteEmotionDiary,
     deleteHealthRecord,
+    deleteWalkRecord,
     getAiAnalyses,
     getCareSummary,
     getEmotionDiaries,
     getHealthRecords,
+    getWalkRecords,
     updateEmotionDiary,
     updateHealthRecord,
+    updateWalkRecord,
 } from "../api/care";
 import { getDogs } from "../api/dog";
 import { getAccessToken } from "../utils/token";
@@ -23,11 +27,23 @@ const today = new Date().toISOString().slice(0, 10);
 
 const initialEmotionForm = {
     dogId: "",
+    walkRecordId: "",
     recordedDate: today,
     emotion: "UNKNOWN",
     conditionLevel: "3",
     behaviorPattern: "",
     diaryContent: "",
+};
+
+const initialWalkForm = {
+    dogId: "",
+    startedAt: `${today}T19:00`,
+    endedAt: "",
+    durationMinutes: "",
+    distanceKm: "",
+    routeSummary: "",
+    memo: "",
+    conditionAfterWalk: "NORMAL",
 };
 
 const initialHealthForm = {
@@ -58,6 +74,14 @@ const healthLabels = {
     BAD: "나쁨",
 };
 
+const conditionAfterWalkLabels = {
+    VERY_GOOD: "매우 좋음",
+    GOOD: "좋음",
+    NORMAL: "보통",
+    TIRED: "피곤함",
+    BAD: "나쁨",
+};
+
 const analysisLabels = {
     WALK_ACTIVITY: "산책 활동 분석",
     EMOTION_PATTERN: "감정 패턴 분석",
@@ -72,6 +96,7 @@ const riskLabels = {
 };
 
 const tabs = [
+    { key: "walk", label: "산책 기록" },
     { key: "emotion", label: "감정 일기" },
     { key: "health", label: "건강 체크" },
     { key: "analysis", label: "AI 분석" },
@@ -83,16 +108,19 @@ export default function CarePage() {
     // 케어 데이터 상태
     const [dogs, setDogs] = useState([]);
     const [selectedDogId, setSelectedDogId] = useState("");
+    const [walkRecords, setWalkRecords] = useState([]);
     const [emotionDiaries, setEmotionDiaries] = useState([]);
     const [healthRecords, setHealthRecords] = useState([]);
     const [aiAnalyses, setAiAnalyses] = useState([]);
     const [careSummary, setCareSummary] = useState(null);
 
     // 화면 및 폼 상태
-    const [activeTab, setActiveTab] = useState("emotion");
+    const [activeTab, setActiveTab] = useState("walk");
+    const [walkForm, setWalkForm] = useState(initialWalkForm);
     const [emotionForm, setEmotionForm] = useState(initialEmotionForm);
     const [healthForm, setHealthForm] = useState(initialHealthForm);
     const [analysisType, setAnalysisType] = useState("CARE_GUIDE");
+    const [editWalkRecordId, setEditWalkRecordId] = useState(null);
     const [editEmotionDiaryId, setEditEmotionDiaryId] = useState(null);
     const [editHealthRecordId, setEditHealthRecordId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -110,13 +138,15 @@ export default function CarePage() {
         }
 
         try {
-            const [emotionResponse, healthResponse, analysisResponse, summaryResponse] = await Promise.all([
+            const [walkResponse, emotionResponse, healthResponse, analysisResponse, summaryResponse] = await Promise.all([
+                getWalkRecords({ dogId }),
                 getEmotionDiaries({ dogId }),
                 getHealthRecords({ dogId }),
                 getAiAnalyses({ dogId }),
                 getCareSummary({ dogId }),
             ]);
 
+            setWalkRecords(walkResponse.data);
             setEmotionDiaries(emotionResponse.data);
             setHealthRecords(healthResponse.data);
             setAiAnalyses(analysisResponse.data);
@@ -138,6 +168,7 @@ export default function CarePage() {
 
             setDogs(nextDogs);
             setSelectedDogId(firstDogId);
+            setWalkForm((prevForm) => ({ ...prevForm, dogId: firstDogId }));
             setEmotionForm((prevForm) => ({ ...prevForm, dogId: firstDogId }));
             setHealthForm((prevForm) => ({ ...prevForm, dogId: firstDogId }));
 
@@ -174,11 +205,23 @@ export default function CarePage() {
         const dogId = event.target.value;
 
         setSelectedDogId(dogId);
+        setWalkForm((prevForm) => ({ ...prevForm, dogId }));
         setEmotionForm((prevForm) => ({ ...prevForm, dogId }));
         setHealthForm((prevForm) => ({ ...prevForm, dogId }));
+        setEditWalkRecordId(null);
         setEditEmotionDiaryId(null);
         setEditHealthRecordId(null);
         await fetchCareData(dogId);
+    };
+
+    // 산책 기록 폼 변경
+    const handleWalkChange = (event) => {
+        const { name, value } = event.target;
+
+        setWalkForm((prevForm) => ({
+            ...prevForm,
+            [name]: value,
+        }));
     };
 
     // 감정 폼 변경
@@ -201,6 +244,47 @@ export default function CarePage() {
         }));
     };
 
+    // 산책 기록 저장
+    const handleWalkSubmit = async (event) => {
+        event.preventDefault();
+
+        if (!walkForm.dogId) {
+            alert("반려견을 먼저 선택해주세요.");
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+
+            const payload = {
+                dogId: Number(walkForm.dogId),
+                startedAt: walkForm.startedAt,
+                endedAt: walkForm.endedAt || null,
+                durationMinutes: walkForm.durationMinutes ? Number(walkForm.durationMinutes) : null,
+                distanceKm: walkForm.distanceKm ? Number(walkForm.distanceKm) : null,
+                routeSummary: walkForm.routeSummary.trim(),
+                memo: walkForm.memo.trim(),
+                conditionAfterWalk: walkForm.conditionAfterWalk || null,
+            };
+
+            if (editWalkRecordId) {
+                await updateWalkRecord(editWalkRecordId, payload);
+                alert("산책 기록이 수정되었습니다.");
+            } else {
+                await createWalkRecord(payload);
+                alert("산책 기록이 등록되었습니다.");
+            }
+
+            resetWalkForm();
+            await fetchCareData(walkForm.dogId);
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 기록 저장에 실패했습니다.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     // 감정 일기 저장
     const handleEmotionSubmit = async (event) => {
         event.preventDefault();
@@ -215,6 +299,7 @@ export default function CarePage() {
 
             const payload = {
                 dogId: Number(emotionForm.dogId),
+                walkRecordId: emotionForm.walkRecordId ? Number(emotionForm.walkRecordId) : null,
                 recordedDate: emotionForm.recordedDate,
                 emotion: emotionForm.emotion,
                 conditionLevel: emotionForm.conditionLevel ? Number(emotionForm.conditionLevel) : null,
@@ -304,12 +389,29 @@ export default function CarePage() {
         }
     };
 
+    // 산책 기록 수정 시작
+    const startEditWalk = (record) => {
+        setActiveTab("walk");
+        setEditWalkRecordId(record.walkRecordId);
+        setWalkForm({
+            dogId: String(record.dogId),
+            startedAt: toDatetimeLocalValue(record.startedAt),
+            endedAt: toDatetimeLocalValue(record.endedAt),
+            durationMinutes: record.durationMinutes ? String(record.durationMinutes) : "",
+            distanceKm: record.distanceKm || "",
+            routeSummary: record.routeSummary || "",
+            memo: record.memo || "",
+            conditionAfterWalk: record.conditionAfterWalk || "NORMAL",
+        });
+    };
+
     // 감정 일기 수정 시작
     const startEditEmotion = (diary) => {
         setActiveTab("emotion");
         setEditEmotionDiaryId(diary.emotionDiaryId);
         setEmotionForm({
             dogId: String(diary.dogId),
+            walkRecordId: diary.walkRecordId ? String(diary.walkRecordId) : "",
             recordedDate: diary.recordedDate,
             emotion: diary.emotion,
             conditionLevel: diary.conditionLevel ? String(diary.conditionLevel) : "",
@@ -330,6 +432,22 @@ export default function CarePage() {
             symptoms: record.symptoms || "",
             memo: record.memo || "",
         });
+    };
+
+    // 산책 기록 삭제
+    const handleDeleteWalk = async (walkRecordId) => {
+        if (!window.confirm("산책 기록을 삭제할까요?")) {
+            return;
+        }
+
+        try {
+            await deleteWalkRecord(walkRecordId);
+            alert("산책 기록이 삭제되었습니다.");
+            await fetchCareData(selectedDogId);
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 기록 삭제에 실패했습니다.");
+        }
     };
 
     // 감정 일기 삭제
@@ -364,12 +482,23 @@ export default function CarePage() {
         }
     };
 
+    // 산책 폼 초기화
+    const resetWalkForm = () => {
+        setEditWalkRecordId(null);
+        setWalkForm({
+            ...initialWalkForm,
+            dogId: selectedDogId,
+            startedAt: `${today}T19:00`,
+        });
+    };
+
     // 감정 폼 초기화
     const resetEmotionForm = () => {
         setEditEmotionDiaryId(null);
         setEmotionForm({
             ...initialEmotionForm,
             dogId: selectedDogId,
+            walkRecordId: "",
             recordedDate: today,
         });
     };
@@ -449,7 +578,7 @@ export default function CarePage() {
                         <CareSummary summary={careSummary} selectedDog={selectedDog} />
 
                         <div className="mt-10 border-b border-gray-200">
-                            <div className="grid grid-cols-3">
+                            <div className="grid grid-cols-2 md:grid-cols-4">
                                 {tabs.map((tab) => (
                                     <button
                                         key={tab.key}
@@ -467,9 +596,24 @@ export default function CarePage() {
                             </div>
                         </div>
 
+                        {activeTab === "walk" && (
+                            <WalkSection
+                                form={walkForm}
+                                records={walkRecords}
+                                isSubmitting={isSubmitting}
+                                isEditing={Boolean(editWalkRecordId)}
+                                onChange={handleWalkChange}
+                                onSubmit={handleWalkSubmit}
+                                onReset={resetWalkForm}
+                                onEdit={startEditWalk}
+                                onDelete={handleDeleteWalk}
+                            />
+                        )}
+
                         {activeTab === "emotion" && (
                             <EmotionSection
                                 form={emotionForm}
+                                walkRecords={walkRecords}
                                 diaries={emotionDiaries}
                                 isSubmitting={isSubmitting}
                                 isEditing={Boolean(editEmotionDiaryId)}
@@ -513,17 +657,20 @@ export default function CarePage() {
 
 // 케어 요약
 function CareSummary({ summary, selectedDog }) {
+    const walkSummary = summary?.walkSummary;
     const emotionSummary = summary?.emotionSummary;
     const healthSummary = summary?.healthSummary;
     const items = [
         { label: "선택 반려견", value: selectedDog?.name || "-" },
+        { label: "산책 기록", value: walkSummary?.totalCount ?? 0 },
+        { label: "총 산책 거리", value: walkSummary?.totalDistanceKm ? `${walkSummary.totalDistanceKm}km` : "-" },
         { label: "감정 기록", value: emotionSummary?.totalCount ?? 0 },
         { label: "평균 컨디션", value: emotionSummary?.averageConditionLevel ? emotionSummary.averageConditionLevel.toFixed(1) : "-" },
         { label: "최근 몸무게", value: healthSummary?.latestWeight ? `${healthSummary.latestWeight}kg` : "-" },
     ];
 
     return (
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             {items.map((item) => (
                 <div key={item.label} className="flex h-32 flex-col justify-between border border-gray-200 p-5">
                     <p className="text-sm font-bold text-gray-400">{item.label}</p>
@@ -534,8 +681,62 @@ function CareSummary({ summary, selectedDog }) {
     );
 }
 
+// 산책 기록 영역
+function WalkSection({ form, records, isSubmitting, isEditing, onChange, onSubmit, onReset, onEdit, onDelete }) {
+    return (
+        <div className="grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
+            <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
+                <FormTitle label="WALK" title={isEditing ? "산책 기록 수정" : "산책 기록 작성"} />
+                <div className="grid gap-4">
+                    <InputField label="시작 시간">
+                        <input type="datetime-local" name="startedAt" value={form.startedAt} onChange={onChange} className="input" />
+                    </InputField>
+                    <InputField label="종료 시간">
+                        <input type="datetime-local" name="endedAt" value={form.endedAt} onChange={onChange} className="input" />
+                    </InputField>
+                    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                        <InputField label="산책 시간">
+                            <input type="number" name="durationMinutes" min="1" value={form.durationMinutes} onChange={onChange} className="input" placeholder="분" />
+                        </InputField>
+                        <InputField label="산책 거리">
+                            <input type="number" step="0.01" name="distanceKm" min="0" value={form.distanceKm} onChange={onChange} className="input" placeholder="km" />
+                        </InputField>
+                    </div>
+                    <InputField label="산책 후 상태">
+                        <select name="conditionAfterWalk" value={form.conditionAfterWalk} onChange={onChange} className="input">
+                            {Object.entries(conditionAfterWalkLabels).map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
+                        </select>
+                    </InputField>
+                    <InputField label="경로 요약">
+                        <input name="routeSummary" value={form.routeSummary} onChange={onChange} className="input" placeholder="예: 남강공원 한 바퀴" />
+                    </InputField>
+                    <InputField label="메모">
+                        <textarea name="memo" value={form.memo} onChange={onChange} className="textarea" placeholder="산책 중 특이사항을 기록해주세요" />
+                    </InputField>
+                </div>
+                <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
+            </form>
+
+            <RecordList emptyText="아직 산책 기록이 없습니다.">
+                {records.map((record) => (
+                    <RecordCard
+                        key={record.walkRecordId}
+                        title={`${conditionAfterWalkLabels[record.conditionAfterWalk] || "상태 미입력"} · ${record.durationMinutes ? `${record.durationMinutes}분` : "시간 미입력"}`}
+                        meta={`${formatDateOnly(record.startedAt)} · ${record.dogName}`}
+                        content={record.memo || record.routeSummary || "기록된 내용이 없습니다."}
+                        onEdit={() => onEdit(record)}
+                        onDelete={() => onDelete(record.walkRecordId)}
+                    />
+                ))}
+            </RecordList>
+        </div>
+    );
+}
+
 // 감정 일기 영역
-function EmotionSection({ form, diaries, isSubmitting, isEditing, onChange, onSubmit, onReset, onEdit, onDelete }) {
+function EmotionSection({ form, walkRecords, diaries, isSubmitting, isEditing, onChange, onSubmit, onReset, onEdit, onDelete }) {
     return (
         <div className="grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
             <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
@@ -543,6 +744,16 @@ function EmotionSection({ form, diaries, isSubmitting, isEditing, onChange, onSu
                 <div className="grid gap-4">
                     <InputField label="기록일">
                         <input type="date" name="recordedDate" value={form.recordedDate} onChange={onChange} className="input" />
+                    </InputField>
+                    <InputField label="연결 산책 기록">
+                        <select name="walkRecordId" value={form.walkRecordId} onChange={onChange} className="input">
+                            <option value="">연결 안 함</option>
+                            {walkRecords.map((record) => (
+                                <option key={record.walkRecordId} value={record.walkRecordId}>
+                                    {formatDateOnly(record.startedAt)} · {record.routeSummary || `${record.durationMinutes || "-"}분 산책`}
+                                </option>
+                            ))}
+                        </select>
                     </InputField>
                     <InputField label="감정">
                         <select name="emotion" value={form.emotion} onChange={onChange} className="input">
@@ -686,7 +897,7 @@ function FormTitle({ label, title }) {
 
 function InputField({ label, children }) {
     return (
-        <label className="grid gap-2 text-sm font-bold text-gray-700">
+        <label className="grid min-w-0 gap-2 text-sm font-bold text-gray-700">
             {label}
             {children}
         </label>
@@ -738,4 +949,12 @@ function RecordCard({ title, meta, content, onEdit, onDelete }) {
             </div>
         </div>
     );
+}
+
+function toDatetimeLocalValue(value) {
+    return value ? value.slice(0, 16) : "";
+}
+
+function formatDateOnly(value) {
+    return value ? value.slice(0, 10) : "-";
 }

@@ -22,6 +22,8 @@ const dashboardTabs = [
     { key: "walks", label: "작성 글" },
     { key: "participations", label: "참여 신청" },
     { key: "chats", label: "채팅방" },
+    { key: "reviews", label: "산책 후기" },
+    { key: "walkRecords", label: "산책 기록" },
     { key: "emotions", label: "감정 일기" },
     { key: "health", label: "건강 체크" },
     { key: "analysis", label: "AI 분석" },
@@ -46,6 +48,14 @@ const healthLabels = {
     BAD: "나쁨",
 };
 
+const conditionAfterWalkLabels = {
+    VERY_GOOD: "매우 좋음",
+    GOOD: "좋음",
+    NORMAL: "보통",
+    TIRED: "피곤함",
+    BAD: "나쁨",
+};
+
 const analysisLabels = {
     WALK_ACTIVITY: "산책 활동 분석",
     EMOTION_PATTERN: "감정 패턴 분석",
@@ -62,6 +72,9 @@ export default function MyPage() {
     const [myWalks, setMyWalks] = useState([]);
     const [myParticipations, setMyParticipations] = useState([]);
     const [chatRooms, setChatRooms] = useState([]);
+    const [writtenReviews, setWrittenReviews] = useState([]);
+    const [receivedReviews, setReceivedReviews] = useState([]);
+    const [walkRecords, setWalkRecords] = useState([]);
     const [emotionDiaries, setEmotionDiaries] = useState([]);
     const [healthRecords, setHealthRecords] = useState([]);
     const [aiAnalyses, setAiAnalyses] = useState([]);
@@ -88,6 +101,9 @@ export default function MyPage() {
             setMyWalks(dashboard.myWalkSchedules);
             setMyParticipations(dashboard.myParticipations);
             setChatRooms(dashboard.chatRooms);
+            setWrittenReviews(dashboard.writtenReviews || []);
+            setReceivedReviews(dashboard.receivedReviews || []);
+            setWalkRecords(dashboard.walkRecords || []);
             setEmotionDiaries(dashboard.emotionDiaries || []);
             setHealthRecords(dashboard.healthRecords || []);
             setAiAnalyses(dashboard.aiAnalyses || []);
@@ -231,6 +247,9 @@ export default function MyPage() {
                                 myWalks={myWalks}
                                 myParticipations={myParticipations}
                                 chatRooms={chatRooms}
+                                writtenReviews={writtenReviews}
+                                receivedReviews={receivedReviews}
+                                walkRecords={walkRecords}
                                 emotionDiaries={emotionDiaries}
                                 healthRecords={healthRecords}
                                 aiAnalyses={aiAnalyses}
@@ -324,6 +343,28 @@ export default function MyPage() {
                                 </DashboardSection>
                             )}
 
+                            {activeDashboardTab === "walkRecords" && (
+                                <DashboardSection
+                                    title="최근 산책 기록"
+                                    count={walkRecords.length}
+                                    emptyText="작성한 산책 기록이 없습니다."
+                                    actionLabel="산책 기록 관리"
+                                    onAction={() => navigate("/care")}
+                                >
+                                    <div className="grid gap-3">
+                                        {walkRecords.slice(0, 4).map((record) => (
+                                            <CareRow
+                                                key={record.walkRecordId}
+                                                title={`${conditionAfterWalkLabels[record.conditionAfterWalk] || "상태 미입력"} · ${record.durationMinutes ? `${record.durationMinutes}분` : "시간 미입력"}`}
+                                                meta={`${formatDateOnly(record.startedAt)} · ${record.dogName}`}
+                                                content={record.memo || record.routeSummary || "기록된 내용이 없습니다."}
+                                                onClick={() => navigate("/care")}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
                             {activeDashboardTab === "emotions" && (
                                 <DashboardSection
                                     title="최근 감정 일기"
@@ -401,7 +442,7 @@ export default function MyPage() {
 function DashboardTabs({ activeTab, onChange }) {
     return (
         <div className="border-b border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-9">
                 {dashboardTabs.map((tab) => (
                     <button
                         key={tab.key}
@@ -491,23 +532,25 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
 }
 
 // 요약 카드 그리드
-function SummaryGrid({ dogs, myWalks, myParticipations, chatRooms, emotionDiaries, healthRecords, aiAnalyses }) {
+function SummaryGrid({
+    dogs = [],
+    myWalks = [],
+    chatRooms = [],
+    walkRecords = [],
+}) {
     const items = [
         { label: "반려견", value: dogs.length },
         { label: "작성 글", value: myWalks.length },
-        { label: "참여신청", value: myParticipations.length },
         { label: "채팅방", value: chatRooms.length },
-        { label: "감정일기", value: emotionDiaries.length },
-        { label: "건강체크", value: healthRecords.length },
-        { label: "AI분석", value: aiAnalyses.length },
+        { label: "산책 기록", value: walkRecords.length },
     ];
 
     return (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {items.map((item) => (
-                <div key={item.label} className="flex h-36 flex-col justify-between border border-gray-200 p-5">
-                    <p className="whitespace-nowrap text-xs font-bold text-gray-400 2xl:text-sm">{item.label}</p>
-                    <p className="text-4xl font-bold leading-none text-gray-950">{item.value}</p>
+                <div key={item.label} className="flex h-36 flex-col items-center justify-between border border-gray-200 p-5">
+                    <p className="w-full text-center whitespace-nowrap text-xs font-bold text-gray-400 2xl:text-sm">{item.label}</p>
+                    <p className="text-5xl font-bold leading-none text-gray-950">{item.value}</p>
                 </div>
             ))}
         </div>
@@ -630,6 +673,48 @@ function ChatRoomRow({ chatRoom, onClick }) {
     );
 }
 
+// 산책 후기 그룹
+function ReviewGroup({ title, reviews, emptyText, onClick }) {
+    return (
+        <div>
+            <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-950">{title}</h3>
+                <span className="text-sm font-bold text-gray-400">{reviews.length}건</span>
+            </div>
+
+            {reviews.length === 0 ? (
+                <div className="flex h-24 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                    {emptyText}
+                </div>
+            ) : (
+                <div className="grid gap-3">
+                    {reviews.slice(0, 4).map((review) => (
+                        <button
+                            key={review.walkReviewId}
+                            type="button"
+                            onClick={() => onClick(review)}
+                            className="border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg"
+                        >
+                            <p className="text-sm font-bold text-gray-400">
+                                {review.walkTitle} · {formatDateOnly(review.createdAt)}
+                            </p>
+                            <h4 className="mt-2 text-lg font-bold text-gray-950">
+                                {renderRating(review.rating)} {review.rating}점
+                            </h4>
+                            <p className="mt-2 text-sm text-gray-500">
+                                {review.reviewerNickname} → {review.revieweeNickname}
+                            </p>
+                            <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">
+                                {review.content || "후기 내용이 없습니다."}
+                            </p>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // 케어 기록 행
 function CareRow({ title, meta, content, onClick }) {
     return (
@@ -663,4 +748,12 @@ function MiniInfo({ label, value }) {
             <p className="mt-1 truncate font-semibold text-gray-800">{value || "미입력"}</p>
         </div>
     );
+}
+
+function formatDateOnly(value) {
+    return value ? value.slice(0, 10) : "-";
+}
+
+function renderRating(rating) {
+    return "★".repeat(rating) + "☆".repeat(5 - rating);
 }

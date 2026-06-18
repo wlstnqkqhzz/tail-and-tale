@@ -3,6 +3,7 @@ package com.tailandtale.domain.member.service;
 import com.tailandtale.domain.care.service.AiAnalysisService;
 import com.tailandtale.domain.care.service.EmotionDiaryService;
 import com.tailandtale.domain.care.service.HealthRecordService;
+import com.tailandtale.domain.care.service.WalkRecordService;
 import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.dog.dto.DogDto;
 import com.tailandtale.domain.dog.repository.DogRepository;
@@ -16,6 +17,7 @@ import com.tailandtale.domain.walk.dto.WalkScheduleDto;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
 import com.tailandtale.domain.walk.repository.WalkParticipantRepository;
+import com.tailandtale.domain.walk.service.WalkReviewService;
 import com.tailandtale.domain.walk.repository.WalkScheduleRepository;
 import com.tailandtale.global.exception.AuthErrorCode;
 import com.tailandtale.global.exception.CustomException;
@@ -39,6 +41,8 @@ public class MemberService {
     private final WalkScheduleRepository walkScheduleRepository;
     private final WalkParticipantRepository walkParticipantRepository;
     private final ChatService chatService;
+    private final WalkReviewService walkReviewService;
+    private final WalkRecordService walkRecordService;
     private final EmotionDiaryService emotionDiaryService;
     private final HealthRecordService healthRecordService;
     private final AiAnalysisService aiAnalysisService;
@@ -130,6 +134,9 @@ public class MemberService {
                         ))
                         .toList())
                 .chatRooms(chatService.getMyChatRooms(memberId))
+                .writtenReviews(walkReviewService.getRecentWrittenReviews(memberId))
+                .receivedReviews(walkReviewService.getRecentReceivedReviews(memberId))
+                .walkRecords(walkRecordService.getRecentWalkRecords(memberId))
                 .emotionDiaries(emotionDiaryService.getRecentEmotionDiaries(memberId))
                 .healthRecords(healthRecordService.getRecentHealthRecords(memberId))
                 .aiAnalyses(aiAnalysisService.getRecentAnalyses(memberId))

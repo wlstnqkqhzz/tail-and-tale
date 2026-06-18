@@ -4,6 +4,7 @@ import com.tailandtale.domain.care.dto.EmotionDiaryDto;
 import com.tailandtale.domain.care.entity.DogEmotion;
 import com.tailandtale.domain.care.entity.EmotionDiary;
 import com.tailandtale.domain.care.repository.EmotionDiaryRepository;
+import com.tailandtale.domain.care.repository.WalkRecordRepository;
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.global.exception.CareErrorCode;
@@ -14,12 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 // 감정 다이어리 Service
@@ -29,6 +28,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class EmotionDiaryService {
     private final EmotionDiaryRepository emotionDiaryRepository;
+    private final WalkRecordRepository walkRecordRepository;
     private final DogRepository dogRepository;
 
     // 감정 다이어리 생성
@@ -36,6 +36,7 @@ public class EmotionDiaryService {
     public EmotionDiaryDto.Response createEmotionDiary(Long memberId, EmotionDiaryDto.CreateRequest request) {
         Dog dog = getMyDog(memberId, request.getDogId());
         validateNotDuplicate(dog.getId(), request.getRecordedDate());
+        validateWalkRecord(memberId, dog.getId(), request.getWalkRecordId());
 
         EmotionDiary emotionDiary = EmotionDiary.create(
                 dog,
@@ -81,6 +82,7 @@ public class EmotionDiaryService {
                 : request.getRecordedDate();
 
         validateNotDuplicate(targetDogId, targetRecordedDate, emotionDiary.getId());
+        validateWalkRecord(memberId, targetDogId, request.getWalkRecordId());
 
         emotionDiary.update(
                 dog,
@@ -172,6 +174,16 @@ public class EmotionDiaryService {
     private EmotionDiary getMyEmotionDiaryEntity(Long memberId, Long emotionDiaryId) {
         return emotionDiaryRepository.findByIdAndDog_Member_Id(emotionDiaryId, memberId)
                 .orElseThrow(() -> new CustomException(CareErrorCode.EMOTION_DIARY_NOT_FOUND));
+    }
+
+    // 산책 기록 연결 검증
+    private void validateWalkRecord(Long memberId, Long dogId, Long walkRecordId) {
+        if (walkRecordId == null) {
+            return;
+        }
+
+        walkRecordRepository.findByIdAndDog_IdAndMember_Id(walkRecordId, dogId, memberId)
+                .orElseThrow(() -> new CustomException(CareErrorCode.WALK_RECORD_NOT_FOUND));
     }
 
     // 감정 다이어리 중복 검증

@@ -3,6 +3,7 @@ package com.tailandtale.domain.care.service;
 import com.tailandtale.domain.care.dto.AiAnalysisDto;
 import com.tailandtale.domain.care.dto.EmotionDiaryDto;
 import com.tailandtale.domain.care.dto.HealthRecordDto;
+import com.tailandtale.domain.care.dto.WalkRecordDto;
 import com.tailandtale.domain.care.entity.*;
 import com.tailandtale.domain.care.repository.AiAnalysisResultRepository;
 import com.tailandtale.domain.dog.entity.Dog;
@@ -31,6 +32,7 @@ public class AiAnalysisService {
     private final MemberRepository memberRepository;
     private final EmotionDiaryService emotionDiaryService;
     private final HealthRecordService healthRecordService;
+    private final WalkRecordService walkRecordService;
 
     // AI 분석 생성
     @Transactional
@@ -53,12 +55,19 @@ public class AiAnalysisService {
                 startDate,
                 endDate
         );
+        WalkRecordDto.SummaryResponse walkSummary = walkRecordService.getWalkSummary(
+                memberId,
+                dog.getId(),
+                startDate,
+                endDate
+        );
 
         GeneratedAnalysis generatedAnalysis = generateAnalysis(
                 dog,
                 request.getAnalysisType(),
                 emotionSummary,
-                healthSummary
+                healthSummary,
+                walkSummary
         );
 
         AiAnalysisResult aiAnalysisResult = AiAnalysisResult.create(
@@ -108,6 +117,7 @@ public class AiAnalysisService {
         return AiAnalysisDto.CareSummaryResponse.builder()
                 .emotionSummary(emotionDiaryService.getEmotionSummary(memberId, dogId, targetStartDate, targetEndDate))
                 .healthSummary(healthRecordService.getHealthSummary(memberId, dogId, targetStartDate, targetEndDate))
+                .walkSummary(walkRecordService.getWalkSummary(memberId, dogId, targetStartDate, targetEndDate))
                 .build();
     }
 
@@ -130,12 +140,13 @@ public class AiAnalysisService {
             Dog dog,
             AnalysisType analysisType,
             EmotionDiaryDto.SummaryResponse emotionSummary,
-            HealthRecordDto.SummaryResponse healthSummary
+            HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary
     ) {
-        RiskLevel riskLevel = determineRiskLevel(emotionSummary, healthSummary);
-        String summary = createSummary(dog, analysisType, emotionSummary, healthSummary, riskLevel);
-        String resultContent = createResultContent(emotionSummary, healthSummary);
-        String guideContent = createGuideContent(riskLevel, emotionSummary, healthSummary);
+        RiskLevel riskLevel = determineRiskLevel(emotionSummary, healthSummary, walkSummary);
+        String summary = createSummary(dog, analysisType, emotionSummary, healthSummary, walkSummary, riskLevel);
+        String resultContent = createResultContent(emotionSummary, healthSummary, walkSummary);
+        String guideContent = createGuideContent(riskLevel, emotionSummary, healthSummary, walkSummary);
 
         return new GeneratedAnalysis(summary, resultContent, riskLevel, guideContent);
     }
@@ -143,16 +154,22 @@ public class AiAnalysisService {
     // 위험도 계산
     private RiskLevel determineRiskLevel(
             EmotionDiaryDto.SummaryResponse emotionSummary,
-            HealthRecordDto.SummaryResponse healthSummary
+            HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary
     ) {
         long badHealthCount = healthSummary.getBadCount() == null ? 0 : healthSummary.getBadCount();
         long watchHealthCount = healthSummary.getWatchCount() == null ? 0 : healthSummary.getWatchCount();
         Double averageConditionLevel = emotionSummary.getAverageConditionLevel();
+        ConditionAfterWalk latestConditionAfterWalk = walkSummary.getLatestConditionAfterWalk();
 
-        if (badHealthCount > 0 || (averageConditionLevel != null && averageConditionLevel <= 2.0)) {
+        if (badHealthCount > 0
+                || latestConditionAfterWalk == ConditionAfterWalk.BAD
+                || (averageConditionLevel != null && averageConditionLevel <= 2.0)) {
             return RiskLevel.HIGH;
         }
-        if (watchHealthCount > 0 || (averageConditionLevel != null && averageConditionLevel <= 3.0)) {
+        if (watchHealthCount > 0
+                || latestConditionAfterWalk == ConditionAfterWalk.TIRED
+                || (averageConditionLevel != null && averageConditionLevel <= 3.0)) {
             return RiskLevel.MEDIUM;
         }
         return RiskLevel.LOW;
@@ -164,6 +181,7 @@ public class AiAnalysisService {
             AnalysisType analysisType,
             EmotionDiaryDto.SummaryResponse emotionSummary,
             HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary,
             RiskLevel riskLevel
     ) {
         return switch (analysisType) {
@@ -171,19 +189,24 @@ public class AiAnalysisService {
                     + getEmotionText(emotionSummary.getMostFrequentEmotion()) + " 중심이며 위험도는 " + getRiskText(riskLevel) + "입니다.";
             case HEALTH_RISK -> dog.getName() + "의 건강 기록 기준 위험도는 " + getRiskText(riskLevel) + "입니다.";
             case CARE_GUIDE -> dog.getName() + "에게 필요한 관리 가이드를 생성했습니다.";
-            case WALK_ACTIVITY -> dog.getName() + "의 산책 후 컨디션 관리를 위해 감정/건강 기록을 함께 확인했습니다.";
+            case WALK_ACTIVITY -> dog.getName() + "의 최근 산책은 총 " + walkSummary.getTotalCount()
+                    + "회, " + walkSummary.getTotalDistanceKm() + "km 기록되었습니다.";
         };
     }
 
     // 분석 상세 생성
     private String createResultContent(
             EmotionDiaryDto.SummaryResponse emotionSummary,
-            HealthRecordDto.SummaryResponse healthSummary
+            HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary
     ) {
-        return "감정 기록 " + emotionSummary.getTotalCount() + "건, 건강 기록 " + healthSummary.getTotalCount()
+        return "산책 기록 " + walkSummary.getTotalCount() + "건, 감정 기록 " + emotionSummary.getTotalCount()
+                + "건, 건강 기록 " + healthSummary.getTotalCount()
                 + "건을 기준으로 분석했습니다. 평균 컨디션은 "
                 + (emotionSummary.getAverageConditionLevel() == null ? "아직 부족합니다" : String.format("%.1f점", emotionSummary.getAverageConditionLevel()))
-                + "이며, 관찰 필요 건강 기록은 " + healthSummary.getWatchCount()
+                + "이며, 총 산책 시간은 " + walkSummary.getTotalDurationMinutes()
+                + "분, 총 산책 거리는 " + walkSummary.getTotalDistanceKm()
+                + "km입니다. 관찰 필요 건강 기록은 " + healthSummary.getWatchCount()
                 + "건, 나쁨 기록은 " + healthSummary.getBadCount() + "건입니다.";
     }
 
@@ -191,15 +214,16 @@ public class AiAnalysisService {
     private String createGuideContent(
             RiskLevel riskLevel,
             EmotionDiaryDto.SummaryResponse emotionSummary,
-            HealthRecordDto.SummaryResponse healthSummary
+            HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary
     ) {
         if (riskLevel == RiskLevel.HIGH) {
             return "컨디션 저하 또는 나쁨 건강 기록이 확인되었습니다. 산책 강도를 낮추고 증상이 이어지면 병원 방문을 고려해주세요.";
         }
         if (riskLevel == RiskLevel.MEDIUM) {
-            return "관찰이 필요한 변화가 있습니다. 식욕, 수면, 산책 후 피로도를 며칠 더 기록해보세요.";
+            return "관찰이 필요한 변화가 있습니다. 산책 시간과 거리, 식욕, 수면, 산책 후 피로도를 며칠 더 기록해보세요.";
         }
-        return "현재 기록상 큰 이상 신호는 낮습니다. 지금처럼 감정과 건강 기록을 꾸준히 남겨주세요.";
+        return "현재 기록상 큰 이상 신호는 낮습니다. 지금처럼 산책, 감정, 건강 기록을 꾸준히 남겨주세요.";
     }
 
     private String getEmotionText(DogEmotion emotion) {

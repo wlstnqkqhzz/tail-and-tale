@@ -10,7 +10,9 @@ import {
     approveWalkParticipant,
     cancelMyWalkParticipation,
     closeWalkSchedule,
+    createWalkReview,
     getWalkParticipants,
+    getWalkReviews,
     getWalkSchedule,
     rejectWalkParticipant,
     reopenWalkSchedule,
@@ -25,6 +27,12 @@ const initialApplyForm = {
     message: "",
 };
 
+const initialReviewForm = {
+    revieweeId: "",
+    rating: "5",
+    content: "",
+};
+
 export default function WalkDetailPage() {
     const navigate = useNavigate();
     const { walkScheduleId } = useParams();
@@ -33,6 +41,7 @@ export default function WalkDetailPage() {
     // 산책 상세 상태
     const [schedule, setSchedule] = useState(null);
     const [participants, setParticipants] = useState([]);
+    const [reviews, setReviews] = useState([]);
     const [dogs, setDogs] = useState([]);
 
     // 요청 상태
@@ -40,13 +49,24 @@ export default function WalkDetailPage() {
     const [isParticipantsLoading, setIsParticipantsLoading] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
     const [isRecruitmentChanging, setIsRecruitmentChanging] = useState(false);
     const [applyForm, setApplyForm] = useState(initialApplyForm);
+    const [reviewForm, setReviewForm] = useState(initialReviewForm);
 
     const isHost = Boolean(member && schedule?.hostMemberId === member.memberId);
     const canEnterChat = Boolean(schedule && (isHost || schedule.myParticipantStatus === "APPROVED"));
     const verifiedDogs = dogs.filter((dog) => dog.isVerified);
     const canCancelParticipation = Boolean(schedule && ["REQUESTED", "APPROVED"].includes(schedule.myParticipantStatus));
+    const approvedParticipants = participants.filter((participant) => participant.status === "APPROVED");
+    const canWriteReview = Boolean(
+        schedule
+        && member
+        && schedule.status !== "CANCELED"
+        && new Date(schedule.scheduledAt).getTime() <= Date.now()
+        && (isHost || schedule.myParticipantStatus === "APPROVED")
+    );
+    const reviewTargetOptions = getReviewTargetOptions(schedule, member, approvedParticipants);
 
     // 산책 게시글 상세 조회
     const fetchScheduleDetail = useCallback(async () => {
@@ -81,6 +101,18 @@ export default function WalkDetailPage() {
         }
     }, [walkScheduleId]);
 
+    // 산책 후기 목록 조회
+    const fetchReviews = useCallback(async () => {
+        try {
+            const response = await getWalkReviews(walkScheduleId);
+
+            setReviews(response.data);
+        } catch (error) {
+            console.error(error);
+            setReviews([]);
+        }
+    }, [walkScheduleId]);
+
     // 내 반려견 목록 조회
     const fetchDogs = useCallback(async () => {
         try {
@@ -103,29 +135,27 @@ export default function WalkDetailPage() {
 
         const timerId = window.setTimeout(() => {
             fetchScheduleDetail();
+            fetchParticipants();
+            fetchReviews();
             fetchDogs();
         }, 0);
 
         return () => {
             window.clearTimeout(timerId);
         };
-    }, [fetchDogs, fetchScheduleDetail, navigate]);
+    }, [fetchDogs, fetchParticipants, fetchReviews, fetchScheduleDetail, navigate]);
 
-    // 호스트일 때만 신청자 목록 조회
+    // 후기 대상 기본값 설정
     useEffect(() => {
-        const timerId = window.setTimeout(() => {
-            if (!schedule || !isHost) {
-                setParticipants([]);
-                return;
-            }
+        if (reviewForm.revieweeId || reviewTargetOptions.length === 0) {
+            return;
+        }
 
-            fetchParticipants();
-        }, 0);
-
-        return () => {
-            window.clearTimeout(timerId);
-        };
-    }, [fetchParticipants, isHost, schedule]);
+        setReviewForm((prevForm) => ({
+            ...prevForm,
+            revieweeId: String(reviewTargetOptions[0].memberId),
+        }));
+    }, [reviewForm.revieweeId, reviewTargetOptions]);
 
     // 신청 모달 열기
     const openApplyModal = () => {
@@ -157,6 +187,16 @@ export default function WalkDetailPage() {
         const { name, value } = event.target;
 
         setApplyForm((prevForm) => ({
+            ...prevForm,
+            [name]: value,
+        }));
+    };
+
+    // 후기 폼 변경
+    const handleReviewChange = (event) => {
+        const { name, value } = event.target;
+
+        setReviewForm((prevForm) => ({
             ...prevForm,
             [name]: value,
         }));
@@ -195,6 +235,38 @@ export default function WalkDetailPage() {
             alert(error.response?.data?.message || "산책 참여 신청에 실패했습니다.");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    // 산책 후기 작성
+    const handleCreateReview = async (event) => {
+        event.preventDefault();
+
+        if (!reviewForm.revieweeId) {
+            alert("후기를 남길 대상을 선택해주세요.");
+            return;
+        }
+
+        try {
+            setIsReviewSubmitting(true);
+
+            await createWalkReview(walkScheduleId, {
+                revieweeId: Number(reviewForm.revieweeId),
+                rating: Number(reviewForm.rating),
+                content: reviewForm.content.trim(),
+            });
+
+            alert("산책 후기가 등록되었습니다.");
+            setReviewForm({
+                ...initialReviewForm,
+                revieweeId: reviewTargetOptions[0] ? String(reviewTargetOptions[0].memberId) : "",
+            });
+            await fetchReviews();
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 후기 등록에 실패했습니다.");
+        } finally {
+            setIsReviewSubmitting(false);
         }
     };
 
@@ -463,6 +535,18 @@ export default function WalkDetailPage() {
                                 />
                             </section>
                         )}
+
+                        <section className="mx-auto max-w-6xl px-8 pb-20">
+                            <WalkReviewPanel
+                                reviews={reviews}
+                                canWriteReview={canWriteReview}
+                                targetOptions={reviewTargetOptions}
+                                form={reviewForm}
+                                isSubmitting={isReviewSubmitting}
+                                onChange={handleReviewChange}
+                                onSubmit={handleCreateReview}
+                            />
+                        </section>
                     </>
                 )}
             </main>
@@ -562,6 +646,120 @@ function HostParticipantPanel({ participants, isLoading, onApprove, onReject }) 
     );
 }
 
+// 산책 후기 패널
+function WalkReviewPanel({ reviews, canWriteReview, targetOptions, form, isSubmitting, onChange, onSubmit }) {
+    return (
+        <div className="border-t border-gray-200 pt-10">
+            <div className="mb-6 flex items-end justify-between gap-4">
+                <div>
+                    <p className="text-sm font-bold tracking-[0.3em] text-gray-400">WALK REVIEW</p>
+                    <h2 className="mt-3 text-2xl font-bold text-gray-950">산책 후기</h2>
+                    <p className="mt-2 text-sm text-gray-500">
+                        함께 산책한 메이트에게 후기를 남기고 신뢰도를 쌓아보세요.
+                    </p>
+                </div>
+
+                <span className="text-sm font-bold text-gray-500">{reviews.length}건</span>
+            </div>
+
+            {canWriteReview && targetOptions.length > 0 && (
+                <form onSubmit={onSubmit} className="mb-8 grid gap-4 border border-gray-200 p-5">
+                    <div className="grid gap-4 md:grid-cols-[1fr_160px]">
+                        <label className="grid gap-2 text-sm font-bold text-gray-700">
+                            후기 대상
+                            <select
+                                name="revieweeId"
+                                value={form.revieweeId}
+                                onChange={onChange}
+                                className="input"
+                            >
+                                {targetOptions.map((target) => (
+                                    <option key={target.memberId} value={target.memberId}>
+                                        {target.nickname}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="grid gap-2 text-sm font-bold text-gray-700">
+                            평점
+                            <select
+                                name="rating"
+                                value={form.rating}
+                                onChange={onChange}
+                                className="input"
+                            >
+                                {[5, 4, 3, 2, 1].map((rating) => (
+                                    <option key={rating} value={rating}>
+                                        {rating}점
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
+
+                    <label className="grid gap-2 text-sm font-bold text-gray-700">
+                        후기 내용
+                        <textarea
+                            name="content"
+                            value={form.content}
+                            onChange={onChange}
+                            maxLength={1000}
+                            className="textarea"
+                            placeholder="함께 산책한 경험을 남겨주세요"
+                        />
+                    </label>
+
+                    <div className="flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="h-11 bg-black px-7 text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+                            {isSubmitting ? "등록 중..." : "후기 등록"}
+                        </button>
+                    </div>
+                </form>
+            )}
+
+            {canWriteReview && targetOptions.length === 0 && (
+                <div className="mb-8 border border-dashed border-gray-200 p-5 text-sm text-gray-400">
+                    후기를 남길 수 있는 다른 참여자가 없습니다.
+                </div>
+            )}
+
+            {reviews.length === 0 ? (
+                <div className="flex h-32 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                    아직 작성된 후기가 없습니다.
+                </div>
+            ) : (
+                <div className="grid gap-3">
+                    {reviews.map((review) => (
+                        <div key={review.walkReviewId} className="border border-gray-200 p-5">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-bold text-gray-400">
+                                        {review.reviewerNickname} → {review.revieweeNickname}
+                                    </p>
+                                    <h3 className="mt-2 text-lg font-bold text-gray-950">
+                                        {renderRating(review.rating)} {review.rating}점
+                                    </h3>
+                                </div>
+
+                                <p className="text-sm text-gray-400">{formatReviewDate(review.createdAt)}</p>
+                            </div>
+
+                            <p className="mt-4 whitespace-pre-line text-sm leading-6 text-gray-600">
+                                {review.content || "후기 내용이 없습니다."}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // 산책 신청 모달
 function ApplyWalkModal({ schedule, dogs, form, isSubmitting, onChange, onClose, onSubmit }) {
     return (
@@ -636,4 +834,38 @@ function getApplyButtonText(schedule, isHost) {
     if (schedule.myParticipantStatus === "APPROVED") return "참여 승인됨";
     if (!schedule.isRecruitable) return "신청 불가";
     return "참여 신청";
+}
+
+function getReviewTargetOptions(schedule, member, approvedParticipants) {
+    if (!schedule || !member) {
+        return [];
+    }
+
+    const options = [];
+
+    if (schedule.hostMemberId !== member.memberId) {
+        options.push({
+            memberId: schedule.hostMemberId,
+            nickname: "호스트 회원",
+        });
+    }
+
+    approvedParticipants
+        .filter((participant) => participant.memberId !== member.memberId)
+        .forEach((participant) => {
+            options.push({
+                memberId: participant.memberId,
+                nickname: participant.nickname,
+            });
+        });
+
+    return options;
+}
+
+function renderRating(rating) {
+    return "★".repeat(rating) + "☆".repeat(5 - rating);
+}
+
+function formatReviewDate(value) {
+    return value ? value.slice(0, 10) : "";
 }

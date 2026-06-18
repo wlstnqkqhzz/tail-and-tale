@@ -1,5 +1,25 @@
 import api from "./axios";
 
+// 산책 기록 생성
+export const createWalkRecord = (data) => {
+    return api.post("/api/walk-records", data);
+};
+
+// 산책 기록 목록 조회
+export const getWalkRecords = (params) => {
+    return api.get("/api/walk-records", { params });
+};
+
+// 산책 기록 수정
+export const updateWalkRecord = (walkRecordId, data) => {
+    return api.patch(`/api/walk-records/${walkRecordId}`, data);
+};
+
+// 산책 기록 삭제
+export const deleteWalkRecord = (walkRecordId) => {
+    return api.delete(`/api/walk-records/${walkRecordId}`);
+};
+
 // 감정 다이어리 생성
 export const createEmotionDiary = (data) => {
     return api.post("/api/emotion-diaries", data);

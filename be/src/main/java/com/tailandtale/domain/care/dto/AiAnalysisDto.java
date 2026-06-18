@@ -73,5 +73,6 @@ public class AiAnalysisDto {
 
         private EmotionDiaryDto.SummaryResponse emotionSummary;
         private HealthRecordDto.SummaryResponse healthSummary;
+        private WalkRecordDto.SummaryResponse walkSummary;
     }
 }

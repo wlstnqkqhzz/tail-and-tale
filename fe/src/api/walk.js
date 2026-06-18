@@ -54,3 +54,33 @@ export const cancelWalkParticipation = (walkScheduleId, walkParticipantId) => {
 export const cancelMyWalkParticipation = (walkScheduleId) => {
     return api.patch(`/api/walk-schedules/${walkScheduleId}/participants/me/cancel`);
 };
+
+// 산책 후기 작성
+export const createWalkReview = (walkScheduleId, data) => {
+    return api.post(`/api/walk-schedules/${walkScheduleId}/reviews`, data);
+};
+
+// 산책 후기 목록 조회
+export const getWalkReviews = (walkScheduleId) => {
+    return api.get(`/api/walk-schedules/${walkScheduleId}/reviews`);
+};
+
+// 내가 작성한 산책 후기 조회
+export const getMyWrittenWalkReviews = () => {
+    return api.get("/api/walk-reviews/me/written");
+};
+
+// 내가 받은 산책 후기 조회
+export const getMyReceivedWalkReviews = () => {
+    return api.get("/api/walk-reviews/me/received");
+};
+
+// 산책 후기 수정
+export const updateWalkReview = (walkReviewId, data) => {
+    return api.patch(`/api/walk-reviews/${walkReviewId}`, data);
+};
+
+// 산책 후기 삭제
+export const deleteWalkReview = (walkReviewId) => {
+    return api.delete(`/api/walk-reviews/${walkReviewId}`);
+};
