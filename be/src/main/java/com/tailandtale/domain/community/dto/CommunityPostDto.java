@@ -2,6 +2,7 @@ package com.tailandtale.domain.community.dto;
 
 import com.tailandtale.domain.community.entity.CommunityPost;
 import com.tailandtale.domain.community.entity.CommunityPostCategory;
+import com.tailandtale.domain.walk.entity.WalkReview;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -24,6 +25,9 @@ public class CommunityPostDto {
         // 관련 반려견 ID
         private Long dogId;
 
+        // 연결 산책 후기 ID
+        private Long walkReviewId;
+
         // 게시글 카테고리
         @NotNull(message = "게시글 카테고리를 선택해주세요.")
         private CommunityPostCategory category;
@@ -45,6 +49,9 @@ public class CommunityPostDto {
 
         // 관련 반려견 ID
         private Long dogId;
+
+        // 연결 산책 후기 ID
+        private Long walkReviewId;
 
         // 게시글 카테고리
         @NotNull(message = "게시글 카테고리를 선택해주세요.")
@@ -110,6 +117,7 @@ public class CommunityPostDto {
         private Integer commentCount;
         private Boolean isLiked;
         private Boolean isWriter;
+        private LinkedWalkReviewResponse linkedWalkReview;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -132,8 +140,40 @@ public class CommunityPostDto {
                     .commentCount(post.getCommentCount())
                     .isLiked(isLiked)
                     .isWriter(post.isWriter(loginMemberId))
+                    .linkedWalkReview(LinkedWalkReviewResponse.from(post.getWalkReview()))
                     .createdAt(post.getCreatedAt())
                     .updatedAt(post.getUpdatedAt())
+                    .build();
+        }
+    }
+
+    // 연결 산책 후기 응답 DTO
+    @Getter
+    @Builder
+    public static class LinkedWalkReviewResponse {
+        private Long walkReviewId;
+        private Long walkScheduleId;
+        private String walkTitle;
+        private Long revieweeId;
+        private String revieweeNickname;
+        private Integer rating;
+        private String content;
+        private LocalDateTime createdAt;
+
+        public static LinkedWalkReviewResponse from(WalkReview walkReview) {
+            if (walkReview == null) {
+                return null;
+            }
+
+            return LinkedWalkReviewResponse.builder()
+                    .walkReviewId(walkReview.getId())
+                    .walkScheduleId(walkReview.getWalkSchedule().getId())
+                    .walkTitle(walkReview.getWalkSchedule().getTitle())
+                    .revieweeId(walkReview.getReviewee().getId())
+                    .revieweeNickname(walkReview.getReviewee().getNickname())
+                    .rating(walkReview.getRating())
+                    .content(walkReview.getContent())
+                    .createdAt(walkReview.getCreatedAt())
                     .build();
         }
     }

@@ -1,9 +1,10 @@
 // 커뮤니티 게시글 작성 페이지
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import { createCommunityPost } from "../api/community";
+import { getMyWrittenWalkReviews } from "../api/walk";
 import { getAccessToken } from "../utils/token";
 import { useAuth } from "../hooks/useAuth";
 
@@ -17,6 +18,7 @@ const categories = [
 
 const initialForm = {
     category: "DAILY",
+    walkReviewId: "",
     title: "",
     content: "",
 };
@@ -30,7 +32,33 @@ export default function CommunityWritePage() {
 
     // 게시글 작성 폼 상태
     const [form, setForm] = useState(initialForm);
+    const [walkReviews, setWalkReviews] = useState([]);
+    const [isReviewLoading, setIsReviewLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // 내가 작성한 산책 후기 조회
+    useEffect(() => {
+        if (form.category !== "WALK_REVIEW" || !getAccessToken()) {
+            return;
+        }
+
+        const fetchWalkReviews = async () => {
+            try {
+                setIsReviewLoading(true);
+
+                const response = await getMyWrittenWalkReviews();
+                setWalkReviews(response.data || []);
+            } catch (error) {
+                console.error(error);
+                alert(error.response?.data?.message || "산책 후기 목록 조회에 실패했습니다.");
+                setWalkReviews([]);
+            } finally {
+                setIsReviewLoading(false);
+            }
+        };
+
+        fetchWalkReviews();
+    }, [form.category]);
 
     // 입력값 변경
     const handleChange = (event) => {
@@ -39,6 +67,24 @@ export default function CommunityWritePage() {
         setForm((prevForm) => ({
             ...prevForm,
             [name]: value,
+            ...(name === "category" && value !== "WALK_REVIEW" ? { walkReviewId: "" } : {}),
+        }));
+    };
+
+    // 연결 산책 후기 선택
+    const handleSelectWalkReview = (event) => {
+        const walkReviewId = event.target.value;
+        const selectedReview = walkReviews.find((review) => String(review.walkReviewId) === walkReviewId);
+
+        setForm((prevForm) => ({
+            ...prevForm,
+            walkReviewId,
+            title: selectedReview && !prevForm.title.trim()
+                ? `${selectedReview.walkTitle} 산책 후기`
+                : prevForm.title,
+            content: selectedReview
+                ? createWalkReviewTemplate(selectedReview)
+                : prevForm.content,
         }));
     };
 
@@ -67,11 +113,17 @@ export default function CommunityWritePage() {
             return;
         }
 
+        if (form.category === "WALK_REVIEW" && !form.walkReviewId) {
+            alert("연결할 산책 후기를 선택해주세요.");
+            return;
+        }
+
         try {
             setIsSubmitting(true);
 
             const response = await createCommunityPost({
                 dogId: null,
+                walkReviewId: form.category === "WALK_REVIEW" ? Number(form.walkReviewId) : null,
                 category: form.category,
                 title: form.title.trim(),
                 content: form.content.trim(),
@@ -125,6 +177,15 @@ export default function CommunityWritePage() {
                                 </select>
                             </Field>
 
+                            {form.category === "WALK_REVIEW" && (
+                                <WalkReviewSelector
+                                    reviews={walkReviews}
+                                    selectedReviewId={form.walkReviewId}
+                                    isLoading={isReviewLoading}
+                                    onSelect={handleSelectWalkReview}
+                                />
+                            )}
+
                             <Field label="제목">
                                 <input
                                     name="title"
@@ -171,6 +232,76 @@ export default function CommunityWritePage() {
     );
 }
 
+// 연결 산책 후기 선택 영역
+function WalkReviewSelector({ reviews, selectedReviewId, isLoading, onSelect }) {
+    return (
+        <div className="border border-gray-200 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p className="text-sm font-bold text-gray-950">연결 산책 후기</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                        내가 작성한 산책 후기를 선택하면 본문 템플릿이 자동으로 채워집니다.
+                    </p>
+                </div>
+                <span className="text-xs font-bold text-gray-400">
+                    {isLoading ? "조회 중" : `${reviews.length}건`}
+                </span>
+            </div>
+
+            {isLoading ? (
+                <div className="mt-4 flex h-24 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                    산책 후기를 불러오는 중...
+                </div>
+            ) : reviews.length === 0 ? (
+                <div className="mt-4 flex h-24 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                    아직 작성한 산책 후기가 없습니다.
+                </div>
+            ) : (
+                <div className="mt-4 grid gap-3">
+                    <select
+                        value={selectedReviewId}
+                        onChange={onSelect}
+                        className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
+                    >
+                        <option value="">산책 후기를 선택해주세요.</option>
+                        {reviews.map((review) => (
+                            <option key={review.walkReviewId} value={review.walkReviewId}>
+                                {review.walkTitle} · {review.revieweeNickname} · {review.rating}점
+                            </option>
+                        ))}
+                    </select>
+
+                    {selectedReviewId && (
+                        <SelectedReviewCard
+                            review={reviews.find((review) => String(review.walkReviewId) === selectedReviewId)}
+                        />
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// 선택 산책 후기 요약
+function SelectedReviewCard({ review }) {
+    if (!review) {
+        return null;
+    }
+
+    return (
+        <div className="border border-emerald-100 bg-emerald-50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-gray-950">{review.walkTitle}</p>
+                <span className="text-xs font-bold text-emerald-600">{renderRating(review.rating)} {review.rating}점</span>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">후기 대상: {review.revieweeNickname}</p>
+            <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-700">
+                {review.content || "후기 내용이 없습니다."}
+            </p>
+        </div>
+    );
+}
+
 // 입력 필드
 function Field({ label, children }) {
     return (
@@ -179,4 +310,22 @@ function Field({ label, children }) {
             {children}
         </label>
     );
+}
+
+function createWalkReviewTemplate(review) {
+    return `[산책 후기 공유]
+
+산책 일정: ${review.walkTitle}
+후기 대상: ${review.revieweeNickname}
+평점: ${review.rating}점
+
+원본 후기:
+${review.content || "후기 내용이 없습니다."}
+
+추가로 공유하고 싶은 이야기:
+`;
+}
+
+function renderRating(rating) {
+    return "★".repeat(rating || 0);
 }

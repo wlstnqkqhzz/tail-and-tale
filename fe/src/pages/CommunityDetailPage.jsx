@@ -223,6 +223,10 @@ export default function CommunityDetailPage() {
                         </div>
 
                         <article className="min-h-80 whitespace-pre-wrap border-b border-gray-200 py-10 text-base leading-8 text-gray-700">
+                            {post.linkedWalkReview && (
+                                <LinkedWalkReviewCard review={post.linkedWalkReview} />
+                            )}
+
                             {post.content}
                         </article>
 
@@ -329,6 +333,44 @@ export default function CommunityDetailPage() {
     );
 }
 
+function LinkedWalkReviewCard({ review }) {
+    return (
+        <div className="mb-8 border border-emerald-100 bg-emerald-50 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p className="text-xs font-bold tracking-[0.3em] text-emerald-600">
+                        LINKED WALK REVIEW
+                    </p>
+                    <h2 className="mt-3 text-xl font-bold text-gray-950">
+                        {review.walkTitle}
+                    </h2>
+                </div>
+                <span className="border border-emerald-200 bg-white px-3 py-1 text-sm font-bold text-emerald-600">
+                    {renderRating(review.rating)} {review.rating}점
+                </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 border-t border-emerald-100 pt-4 text-sm text-gray-600 sm:grid-cols-2">
+                <InfoItem label="후기 대상" value={review.revieweeNickname} />
+                <InfoItem label="작성일" value={formatDateTime(review.createdAt)} />
+            </div>
+
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-700">
+                {review.content || "후기 내용이 없습니다."}
+            </p>
+        </div>
+    );
+}
+
+function InfoItem({ label, value }) {
+    return (
+        <div>
+            <p className="text-xs font-bold text-gray-400">{label}</p>
+            <p className="mt-1 font-bold text-gray-800">{value || "-"}</p>
+        </div>
+    );
+}
+
 function CommentRow({
     comment,
     editing,
@@ -408,4 +450,8 @@ function formatDateTime(value) {
     }
 
     return value.replace("T", " ").slice(0, 16);
+}
+
+function renderRating(rating) {
+    return "★".repeat(rating || 0);
 }

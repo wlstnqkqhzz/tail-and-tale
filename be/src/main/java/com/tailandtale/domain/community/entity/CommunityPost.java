@@ -2,6 +2,7 @@ package com.tailandtale.domain.community.entity;
 
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.member.entity.Member;
+import com.tailandtale.domain.walk.entity.WalkReview;
 import com.tailandtale.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -30,6 +31,11 @@ public class CommunityPost extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dog_id")
     private Dog dog;
+
+    // 연결 산책 후기
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "walk_review_id")
+    private WalkReview walkReview;
 
     // 게시글 카테고리
     @Enumerated(EnumType.STRING)
@@ -61,12 +67,14 @@ public class CommunityPost extends BaseEntity {
     private CommunityPost(
             Member member,
             Dog dog,
+            WalkReview walkReview,
             CommunityPostCategory category,
             String title,
             String content
     ) {
         this.member = member;
         this.dog = dog;
+        this.walkReview = walkReview;
         this.category = category;
         this.title = title;
         this.content = content;
@@ -79,6 +87,7 @@ public class CommunityPost extends BaseEntity {
     public static CommunityPost create(
             Member member,
             Dog dog,
+            WalkReview walkReview,
             CommunityPostCategory category,
             String title,
             String content
@@ -86,6 +95,7 @@ public class CommunityPost extends BaseEntity {
         return new CommunityPost(
                 member,
                 dog,
+                walkReview,
                 category,
                 title,
                 content
@@ -96,11 +106,13 @@ public class CommunityPost extends BaseEntity {
     public void update(
             CommunityPostCategory category,
             Dog dog,
+            WalkReview walkReview,
             String title,
             String content
     ) {
         this.category = category;
         this.dog = dog;
+        this.walkReview = walkReview;
         this.title = title;
         this.content = content;
     }

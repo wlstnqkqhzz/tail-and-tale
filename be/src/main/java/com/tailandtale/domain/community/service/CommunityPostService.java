@@ -12,6 +12,8 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.MemberRole;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.walk.entity.WalkReview;
+import com.tailandtale.domain.walk.repository.WalkReviewRepository;
 import com.tailandtale.global.exception.CommunityErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
@@ -35,6 +37,7 @@ public class CommunityPostService {
     private final PostLikeRepository postLikeRepository;
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
+    private final WalkReviewRepository walkReviewRepository;
 
     // 게시글 생성
     @Transactional
@@ -43,10 +46,12 @@ public class CommunityPostService {
         validateNoticePermission(member, request.getCategory());
 
         Dog dog = findDogOrNull(request.getDogId(), memberId);
+        WalkReview walkReview = findWalkReviewOrNull(request.getCategory(), request.getWalkReviewId(), memberId);
 
         CommunityPost post = CommunityPost.create(
                 member,
                 dog,
+                walkReview,
                 request.getCategory(),
                 request.getTitle().trim(),
                 request.getContent().trim()
@@ -113,10 +118,12 @@ public class CommunityPostService {
         validateNoticePermission(member, request.getCategory());
 
         Dog dog = findDogOrNull(request.getDogId(), memberId);
+        WalkReview walkReview = findWalkReviewOrNull(request.getCategory(), request.getWalkReviewId(), memberId);
 
         post.update(
                 request.getCategory(),
                 dog,
+                walkReview,
                 request.getTitle().trim(),
                 request.getContent().trim()
         );
@@ -187,6 +194,24 @@ public class CommunityPostService {
         }
 
         return dog;
+    }
+
+    // 연결 산책 후기 조회
+    private WalkReview findWalkReviewOrNull(
+            CommunityPostCategory category,
+            Long walkReviewId,
+            Long memberId
+    ) {
+        if (category != CommunityPostCategory.WALK_REVIEW) {
+            return null;
+        }
+
+        if (walkReviewId == null) {
+            throw new CustomException(CommunityErrorCode.COMMUNITY_WALK_REVIEW_REQUIRED);
+        }
+
+        return walkReviewRepository.findByIdAndReviewerId(walkReviewId, memberId)
+                .orElseThrow(() -> new CustomException(CommunityErrorCode.COMMUNITY_WALK_REVIEW_ACCESS_DENIED));
     }
 
     // 작성자 검증
