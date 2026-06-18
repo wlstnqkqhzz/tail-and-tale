@@ -26,6 +26,34 @@ button {
   font-family: inherit;
 }
 
+.input {
+  height: 3rem;
+  border: 1px solid #e5e7eb;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  border-color: #111111;
+}
+
+.textarea {
+  min-height: 7rem;
+  resize: none;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.textarea:focus {
+  border-color: #111111;
+}
+
 /* ==========================================================================
    2. Modal Animation
    ========================================================================== */

@@ -15,6 +15,16 @@ export const getWalkSchedule = (walkScheduleId) => {
     return api.get(`/api/walk-schedules/${walkScheduleId}`);
 };
 
+// 산책 모집 마감
+export const closeWalkSchedule = (walkScheduleId) => {
+    return api.patch(`/api/walk-schedules/${walkScheduleId}/close`);
+};
+
+// 산책 모집 재개
+export const reopenWalkSchedule = (walkScheduleId) => {
+    return api.patch(`/api/walk-schedules/${walkScheduleId}/reopen`);
+};
+
 // 산책 참여 신청
 export const requestWalkParticipation = (walkScheduleId, data) => {
     return api.post(`/api/walk-schedules/${walkScheduleId}/participants`, data);

@@ -22,7 +22,36 @@ const dashboardTabs = [
     { key: "walks", label: "작성 글" },
     { key: "participations", label: "참여 신청" },
     { key: "chats", label: "채팅방" },
+    { key: "emotions", label: "감정 일기" },
+    { key: "health", label: "건강 체크" },
+    { key: "analysis", label: "AI 분석" },
 ];
+
+const emotionLabels = {
+    HAPPY: "기분 좋음",
+    CALM: "평온함",
+    EXCITED: "흥분함",
+    ANXIOUS: "불안함",
+    SAD: "슬픔",
+    ANGRY: "예민함",
+    TIRED: "피곤함",
+    UNKNOWN: "알 수 없음",
+};
+
+const healthLabels = {
+    VERY_GOOD: "매우 좋음",
+    GOOD: "좋음",
+    NORMAL: "보통",
+    WATCH: "관찰 필요",
+    BAD: "나쁨",
+};
+
+const analysisLabels = {
+    WALK_ACTIVITY: "산책 활동 분석",
+    EMOTION_PATTERN: "감정 패턴 분석",
+    HEALTH_RISK: "건강 위험 분석",
+    CARE_GUIDE: "맞춤 관리 가이드",
+};
 
 export default function MyPage() {
     const navigate = useNavigate();
@@ -33,6 +62,9 @@ export default function MyPage() {
     const [myWalks, setMyWalks] = useState([]);
     const [myParticipations, setMyParticipations] = useState([]);
     const [chatRooms, setChatRooms] = useState([]);
+    const [emotionDiaries, setEmotionDiaries] = useState([]);
+    const [healthRecords, setHealthRecords] = useState([]);
+    const [aiAnalyses, setAiAnalyses] = useState([]);
 
     // 입력 폼 상태
     const [form, setForm] = useState(initialForm);
@@ -56,6 +88,9 @@ export default function MyPage() {
             setMyWalks(dashboard.myWalkSchedules);
             setMyParticipations(dashboard.myParticipations);
             setChatRooms(dashboard.chatRooms);
+            setEmotionDiaries(dashboard.emotionDiaries || []);
+            setHealthRecords(dashboard.healthRecords || []);
+            setAiAnalyses(dashboard.aiAnalyses || []);
             setForm({
                 realName: nextMember.realName || "",
                 nickname: nextMember.nickname || "",
@@ -196,6 +231,9 @@ export default function MyPage() {
                                 myWalks={myWalks}
                                 myParticipations={myParticipations}
                                 chatRooms={chatRooms}
+                                emotionDiaries={emotionDiaries}
+                                healthRecords={healthRecords}
+                                aiAnalyses={aiAnalyses}
                             />
 
                             <DashboardTabs
@@ -285,6 +323,72 @@ export default function MyPage() {
                                     </div>
                                 </DashboardSection>
                             )}
+
+                            {activeDashboardTab === "emotions" && (
+                                <DashboardSection
+                                    title="최근 감정 일기"
+                                    count={emotionDiaries.length}
+                                    emptyText="작성한 감정 일기가 없습니다."
+                                    actionLabel="감정 일기 관리"
+                                    onAction={() => navigate("/care")}
+                                >
+                                    <div className="grid gap-3">
+                                        {emotionDiaries.slice(0, 4).map((diary) => (
+                                            <CareRow
+                                                key={diary.emotionDiaryId}
+                                                title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
+                                                meta={`${diary.recordedDate} · ${diary.dogName}`}
+                                                content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
+                                                onClick={() => navigate("/care")}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {activeDashboardTab === "health" && (
+                                <DashboardSection
+                                    title="최근 건강 체크"
+                                    count={healthRecords.length}
+                                    emptyText="작성한 건강 기록이 없습니다."
+                                    actionLabel="건강 체크 관리"
+                                    onAction={() => navigate("/care")}
+                                >
+                                    <div className="grid gap-3">
+                                        {healthRecords.slice(0, 4).map((record) => (
+                                            <CareRow
+                                                key={record.healthRecordId}
+                                                title={`${healthLabels[record.healthStatus] || "상태 미입력"} · ${record.weight ? `${record.weight}kg` : "몸무게 미입력"}`}
+                                                meta={`${record.recordedDate} · ${record.dogName}`}
+                                                content={record.memo || record.symptoms || "기록된 내용이 없습니다."}
+                                                onClick={() => navigate("/care")}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {activeDashboardTab === "analysis" && (
+                                <DashboardSection
+                                    title="최근 AI 분석"
+                                    count={aiAnalyses.length}
+                                    emptyText="생성한 AI 분석 결과가 없습니다."
+                                    actionLabel="AI 분석 관리"
+                                    onAction={() => navigate("/care")}
+                                >
+                                    <div className="grid gap-3">
+                                        {aiAnalyses.slice(0, 4).map((analysis) => (
+                                            <CareRow
+                                                key={analysis.aiAnalysisResultId}
+                                                title={analysis.summary}
+                                                meta={`${analysisLabels[analysis.analysisType]} · ${analysis.dogName}`}
+                                                content={analysis.guideContent || analysis.resultContent}
+                                                onClick={() => navigate("/care")}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
                         </div>
                     </section>
                 )}
@@ -297,7 +401,7 @@ export default function MyPage() {
 function DashboardTabs({ activeTab, onChange }) {
     return (
         <div className="border-b border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
                 {dashboardTabs.map((tab) => (
                     <button
                         key={tab.key}
@@ -387,19 +491,22 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
 }
 
 // 요약 카드 그리드
-function SummaryGrid({ dogs, myWalks, myParticipations, chatRooms }) {
+function SummaryGrid({ dogs, myWalks, myParticipations, chatRooms, emotionDiaries, healthRecords, aiAnalyses }) {
     const items = [
         { label: "반려견", value: dogs.length },
         { label: "작성 글", value: myWalks.length },
-        { label: "참여 신청", value: myParticipations.length },
+        { label: "참여신청", value: myParticipations.length },
         { label: "채팅방", value: chatRooms.length },
+        { label: "감정일기", value: emotionDiaries.length },
+        { label: "건강체크", value: healthRecords.length },
+        { label: "AI분석", value: aiAnalyses.length },
     ];
 
     return (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             {items.map((item) => (
                 <div key={item.label} className="flex h-36 flex-col justify-between border border-gray-200 p-5">
-                    <p className="text-sm font-bold text-gray-400">{item.label}</p>
+                    <p className="whitespace-nowrap text-xs font-bold text-gray-400 2xl:text-sm">{item.label}</p>
                     <p className="text-4xl font-bold leading-none text-gray-950">{item.value}</p>
                 </div>
             ))}
@@ -519,6 +626,21 @@ function ChatRoomRow({ chatRoom, onClick }) {
                     ? formatDateTime(chatRoom.lastMessage.createdAt)
                     : "새 채팅방"}
             </div>
+        </button>
+    );
+}
+
+// 케어 기록 행
+function CareRow({ title, meta, content, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg"
+        >
+            <p className="text-sm font-bold text-gray-400">{meta}</p>
+            <h3 className="mt-2 line-clamp-1 text-lg font-bold text-gray-950">{title}</h3>
+            <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">{content}</p>
         </button>
     );
 }

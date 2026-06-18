@@ -9,9 +9,11 @@ import { getDogs } from "../api/dog";
 import {
     approveWalkParticipant,
     cancelMyWalkParticipation,
+    closeWalkSchedule,
     getWalkParticipants,
     getWalkSchedule,
     rejectWalkParticipant,
+    reopenWalkSchedule,
     requestWalkParticipation,
 } from "../api/walk";
 import { useAuth } from "../hooks/useAuth";
@@ -38,6 +40,7 @@ export default function WalkDetailPage() {
     const [isParticipantsLoading, setIsParticipantsLoading] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRecruitmentChanging, setIsRecruitmentChanging] = useState(false);
     const [applyForm, setApplyForm] = useState(initialApplyForm);
 
     const isHost = Boolean(member && schedule?.hostMemberId === member.memberId);
@@ -240,6 +243,48 @@ export default function WalkDetailPage() {
         }
     };
 
+    // 산책 모집 마감
+    const handleCloseRecruitment = async () => {
+        if (!window.confirm("산책 모집을 마감할까요?")) {
+            return;
+        }
+
+        try {
+            setIsRecruitmentChanging(true);
+
+            const response = await closeWalkSchedule(walkScheduleId);
+
+            setSchedule(response.data);
+            alert("산책 모집을 마감했습니다.");
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 모집 마감에 실패했습니다.");
+        } finally {
+            setIsRecruitmentChanging(false);
+        }
+    };
+
+    // 산책 모집 재개
+    const handleReopenRecruitment = async () => {
+        if (!window.confirm("산책 모집을 다시 시작할까요?")) {
+            return;
+        }
+
+        try {
+            setIsRecruitmentChanging(true);
+
+            const response = await reopenWalkSchedule(walkScheduleId);
+
+            setSchedule(response.data);
+            alert("산책 모집을 재개했습니다.");
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "산책 모집 재개에 실패했습니다.");
+        } finally {
+            setIsRecruitmentChanging(false);
+        }
+    };
+
     // 채팅방 입장
     const enterChatRoom = async () => {
         if (!schedule) {
@@ -324,6 +369,28 @@ export default function WalkDetailPage() {
                                                 className="h-12 rounded-full border border-red-100 px-8 text-sm font-bold text-red-500 transition hover:bg-red-50 sm:col-span-2"
                                             >
                                                 신청 취소
+                                            </button>
+                                        )}
+
+                                        {isHost && schedule.status === "OPEN" && (
+                                            <button
+                                                type="button"
+                                                onClick={handleCloseRecruitment}
+                                                disabled={isRecruitmentChanging}
+                                                className="h-12 rounded-full border border-amber-100 px-8 text-sm font-bold text-amber-600 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 sm:col-span-2"
+                                            >
+                                                {isRecruitmentChanging ? "처리 중..." : "모집 마감"}
+                                            </button>
+                                        )}
+
+                                        {isHost && schedule.status === "CLOSED" && (
+                                            <button
+                                                type="button"
+                                                onClick={handleReopenRecruitment}
+                                                disabled={isRecruitmentChanging}
+                                                className="h-12 rounded-full border border-emerald-100 px-8 text-sm font-bold text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 sm:col-span-2"
+                                            >
+                                                {isRecruitmentChanging ? "처리 중..." : "모집 재개"}
                                             </button>
                                         )}
                                     </div>

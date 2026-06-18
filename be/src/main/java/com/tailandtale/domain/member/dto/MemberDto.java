@@ -1,5 +1,8 @@
 package com.tailandtale.domain.member.dto;
 
+import com.tailandtale.domain.care.dto.AiAnalysisDto;
+import com.tailandtale.domain.care.dto.EmotionDiaryDto;
+import com.tailandtale.domain.care.dto.HealthRecordDto;
 import com.tailandtale.domain.chat.dto.ChatDto;
 import com.tailandtale.domain.dog.dto.DogDto;
 import com.tailandtale.domain.member.entity.Member;
@@ -100,6 +103,9 @@ public class MemberDto {
         private List<WalkScheduleDto.DetailResponse> myWalkSchedules;
         private List<ParticipationResponse> myParticipations;
         private List<ChatDto.RoomResponse> chatRooms;
+        private List<EmotionDiaryDto.Response> emotionDiaries;
+        private List<HealthRecordDto.Response> healthRecords;
+        private List<AiAnalysisDto.Response> aiAnalyses;
     }
 
     // 내 산책 참여 응답 DTO

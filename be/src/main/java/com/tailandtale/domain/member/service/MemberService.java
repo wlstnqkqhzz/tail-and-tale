@@ -1,5 +1,8 @@
 package com.tailandtale.domain.member.service;
 
+import com.tailandtale.domain.care.service.AiAnalysisService;
+import com.tailandtale.domain.care.service.EmotionDiaryService;
+import com.tailandtale.domain.care.service.HealthRecordService;
 import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.dog.dto.DogDto;
 import com.tailandtale.domain.dog.repository.DogRepository;
@@ -36,6 +39,9 @@ public class MemberService {
     private final WalkScheduleRepository walkScheduleRepository;
     private final WalkParticipantRepository walkParticipantRepository;
     private final ChatService chatService;
+    private final EmotionDiaryService emotionDiaryService;
+    private final HealthRecordService healthRecordService;
+    private final AiAnalysisService aiAnalysisService;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -124,6 +130,9 @@ public class MemberService {
                         ))
                         .toList())
                 .chatRooms(chatService.getMyChatRooms(memberId))
+                .emotionDiaries(emotionDiaryService.getRecentEmotionDiaries(memberId))
+                .healthRecords(healthRecordService.getRecentHealthRecords(memberId))
+                .aiAnalyses(aiAnalysisService.getRecentAnalyses(memberId))
                 .build();
     }
 

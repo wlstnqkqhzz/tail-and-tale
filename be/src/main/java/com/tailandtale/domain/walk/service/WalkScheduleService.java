@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 // 산책 일정 Service
@@ -127,6 +128,42 @@ public class WalkScheduleService {
         return toDetailResponse(walkSchedule, memberId);
     }
 
+    // 산책 모집 마감
+    @Transactional
+    public WalkScheduleDto.DetailResponse closeSchedule(Long memberId, Long walkScheduleId) {
+        WalkSchedule walkSchedule = getScheduleEntity(walkScheduleId);
+
+        validateHostMember(walkSchedule, memberId);
+        validateRecruitmentChangeable(walkSchedule);
+
+        if (walkSchedule.getStatus() == WalkScheduleStatus.CLOSED) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_ALREADY_CLOSED);
+        }
+
+        walkSchedule.close();
+
+        return toDetailResponse(walkSchedule, memberId);
+    }
+
+    // 산책 모집 재개
+    @Transactional
+    public WalkScheduleDto.DetailResponse reopenSchedule(Long memberId, Long walkScheduleId) {
+        WalkSchedule walkSchedule = getScheduleEntity(walkScheduleId);
+
+        validateHostMember(walkSchedule, memberId);
+        validateRecruitmentChangeable(walkSchedule);
+
+        if (walkSchedule.getStatus() == WalkScheduleStatus.OPEN) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_ALREADY_OPEN);
+        }
+
+        validateReopenableSchedule(walkSchedule);
+
+        walkSchedule.reopen();
+
+        return toDetailResponse(walkSchedule, memberId);
+    }
+
     // 산책 일정 목록 조회
     public List<WalkScheduleDto.DetailResponse> getSchedules(
             Long memberId,
@@ -183,6 +220,32 @@ public class WalkScheduleService {
     private void validateEditableSchedule(WalkSchedule walkSchedule) {
         if (walkSchedule.getStatus() == WalkScheduleStatus.CANCELED) {
             throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_ALREADY_CANCELED);
+        }
+    }
+
+    // 모집 상태 변경 가능 여부 검증
+    private void validateRecruitmentChangeable(WalkSchedule walkSchedule) {
+        if (walkSchedule.getStatus() == WalkScheduleStatus.CANCELED) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_ALREADY_CANCELED);
+        }
+        if (walkSchedule.getStatus() == WalkScheduleStatus.COMPLETED) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_ALREADY_COMPLETED);
+        }
+    }
+
+    // 모집 재개 가능 여부 검증
+    private void validateReopenableSchedule(WalkSchedule walkSchedule) {
+        long approvedParticipantCount = walkParticipantRepository.countByWalkScheduleIdAndStatus(
+                walkSchedule.getId(),
+                WalkParticipantStatus.APPROVED
+        );
+        long currentParticipantCount = approvedParticipantCount + 1;
+
+        if (currentParticipantCount >= walkSchedule.getMaxParticipants()) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_FULL);
+        }
+        if (!walkSchedule.getScheduledAt().isAfter(LocalDateTime.now())) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_PAST_TIME);
         }
     }
 
