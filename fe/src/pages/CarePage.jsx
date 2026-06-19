@@ -1,7 +1,7 @@
 // 반려견 케어 관리 페이지
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import {
     createAiAnalysis,
@@ -55,6 +55,35 @@ const initialHealthForm = {
     memo: "",
 };
 
+const initialQuickRecordForm = {
+    hasWalk: "yes",
+    durationMinutes: "45",
+    distanceKm: "",
+    conditionAfterWalk: "GOOD",
+    emotion: "HAPPY",
+    conditionLevel: "5",
+    behaviorPattern: "",
+    diaryContent: "",
+    weight: "",
+    healthStatus: "GOOD",
+    symptoms: "",
+    memo: "",
+};
+
+const quickSteps = [
+    { key: "walk", label: "산책" },
+    { key: "emotion", label: "감정" },
+    { key: "health", label: "건강" },
+];
+
+const quickEmotionOptions = [
+    { value: "SAD", icon: "😞", label: "슬픔", conditionLevel: "2" },
+    { value: "TIRED", icon: "😐", label: "피곤함", conditionLevel: "3" },
+    { value: "CALM", icon: "🙂", label: "평온함", conditionLevel: "4" },
+    { value: "HAPPY", icon: "😄", label: "좋음", conditionLevel: "5" },
+    { value: "EXCITED", icon: "😍", label: "신남", conditionLevel: "5" },
+];
+
 const emotionLabels = {
     HAPPY: "기분 좋음",
     CALM: "평온함",
@@ -96,14 +125,37 @@ const riskLabels = {
 };
 
 const tabs = [
-    { key: "walk", label: "산책 기록" },
-    { key: "emotion", label: "감정 일기" },
-    { key: "health", label: "건강 체크" },
-    { key: "analysis", label: "AI 분석" },
+    {
+        key: "walk",
+        step: "01",
+        label: "산책 기록",
+        description: "시간, 거리, 산책 후 상태를 먼저 남겨요.",
+    },
+    {
+        key: "emotion",
+        step: "02",
+        label: "감정 일기",
+        description: "산책 후 감정과 행동 변화를 이어서 적어요.",
+    },
+    {
+        key: "health",
+        step: "03",
+        label: "건강 체크",
+        description: "몸무게와 증상, 건강 상태를 하루 단위로 확인해요.",
+    },
+    {
+        key: "analysis",
+        step: "04",
+        label: "AI 분석",
+        description: "쌓인 기록을 바탕으로 관리 가이드를 확인해요.",
+    },
 ];
 
 export default function CarePage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const requestedTab = normalizeCareTab(searchParams.get("tab"));
+    const requestedDogId = searchParams.get("dogId") || "";
 
     // 케어 데이터 상태
     const [dogs, setDogs] = useState([]);
@@ -115,7 +167,7 @@ export default function CarePage() {
     const [careSummary, setCareSummary] = useState(null);
 
     // 화면 및 폼 상태
-    const [activeTab, setActiveTab] = useState("walk");
+    const [activeTab, setActiveTab] = useState(requestedTab);
     const [walkForm, setWalkForm] = useState(initialWalkForm);
     const [emotionForm, setEmotionForm] = useState(initialEmotionForm);
     const [healthForm, setHealthForm] = useState(initialHealthForm);
@@ -123,6 +175,9 @@ export default function CarePage() {
     const [editWalkRecordId, setEditWalkRecordId] = useState(null);
     const [editEmotionDiaryId, setEditEmotionDiaryId] = useState(null);
     const [editHealthRecordId, setEditHealthRecordId] = useState(null);
+    const [quickRecordOpen, setQuickRecordOpen] = useState(false);
+    const [quickStep, setQuickStep] = useState(0);
+    const [quickRecordForm, setQuickRecordForm] = useState(initialQuickRecordForm);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,6 +185,11 @@ export default function CarePage() {
         () => dogs.find((dog) => String(dog.dogId) === selectedDogId),
         [dogs, selectedDogId]
     );
+
+    // 주소 탭 파라미터 반영
+    useEffect(() => {
+        setActiveTab(requestedTab);
+    }, [requestedTab]);
 
     // 케어 데이터 조회
     const fetchCareData = useCallback(async (dogId) => {
@@ -165,15 +225,17 @@ export default function CarePage() {
             const response = await getDogs();
             const nextDogs = response.data;
             const firstDogId = nextDogs[0] ? String(nextDogs[0].dogId) : "";
+            const queryDogExists = nextDogs.some((dog) => String(dog.dogId) === requestedDogId);
+            const nextDogId = queryDogExists ? requestedDogId : firstDogId;
 
             setDogs(nextDogs);
-            setSelectedDogId(firstDogId);
-            setWalkForm((prevForm) => ({ ...prevForm, dogId: firstDogId }));
-            setEmotionForm((prevForm) => ({ ...prevForm, dogId: firstDogId }));
-            setHealthForm((prevForm) => ({ ...prevForm, dogId: firstDogId }));
+            setSelectedDogId(nextDogId);
+            setWalkForm((prevForm) => ({ ...prevForm, dogId: nextDogId }));
+            setEmotionForm((prevForm) => ({ ...prevForm, dogId: nextDogId }));
+            setHealthForm((prevForm) => ({ ...prevForm, dogId: nextDogId }));
 
-            if (firstDogId) {
-                await fetchCareData(firstDogId);
+            if (nextDogId) {
+                await fetchCareData(nextDogId);
             }
         } catch (error) {
             console.error(error);
@@ -181,7 +243,7 @@ export default function CarePage() {
         } finally {
             setIsLoading(false);
         }
-    }, [fetchCareData]);
+    }, [fetchCareData, requestedDogId]);
 
     // 비로그인 접근 방지 및 초기 조회
     useEffect(() => {
@@ -359,6 +421,103 @@ export default function CarePage() {
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "건강 기록 저장에 실패했습니다.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // 오늘 기록 모달 열기
+    const openQuickRecord = () => {
+        if (!selectedDogId) {
+            alert("반려견을 먼저 선택해주세요.");
+            return;
+        }
+
+        setQuickRecordForm({
+            ...initialQuickRecordForm,
+            weight: selectedDog?.weight ? String(selectedDog.weight) : "",
+        });
+        setQuickStep(0);
+        setQuickRecordOpen(true);
+    };
+
+    // 오늘 기록 모달 닫기
+    const closeQuickRecord = () => {
+        setQuickRecordOpen(false);
+        setQuickStep(0);
+    };
+
+    // 오늘 기록 폼 변경
+    const handleQuickRecordChange = (event) => {
+        const { name, value } = event.target;
+
+        setQuickRecordForm((prevForm) => ({
+            ...prevForm,
+            [name]: value,
+        }));
+    };
+
+    // 오늘 감정 선택
+    const handleQuickEmotionSelect = (option) => {
+        setQuickRecordForm((prevForm) => ({
+            ...prevForm,
+            emotion: option.value,
+            conditionLevel: option.conditionLevel,
+        }));
+    };
+
+    // 오늘 기록 한 번에 저장
+    const handleQuickRecordSubmit = async () => {
+        if (!selectedDogId) {
+            alert("반려견을 먼저 선택해주세요.");
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+
+            let walkRecordId = null;
+
+            if (quickRecordForm.hasWalk === "yes") {
+                const walkResponse = await createWalkRecord({
+                    dogId: Number(selectedDogId),
+                    startedAt: `${today}T19:00`,
+                    endedAt: null,
+                    durationMinutes: quickRecordForm.durationMinutes ? Number(quickRecordForm.durationMinutes) : null,
+                    distanceKm: quickRecordForm.distanceKm ? Number(quickRecordForm.distanceKm) : null,
+                    routeSummary: "오늘 산책",
+                    memo: "",
+                    conditionAfterWalk: quickRecordForm.conditionAfterWalk,
+                });
+
+                walkRecordId = walkResponse.data?.walkRecordId || null;
+            }
+
+            await createEmotionDiary({
+                dogId: Number(selectedDogId),
+                walkRecordId,
+                recordedDate: today,
+                emotion: quickRecordForm.emotion,
+                conditionLevel: quickRecordForm.conditionLevel ? Number(quickRecordForm.conditionLevel) : null,
+                behaviorPattern: quickRecordForm.behaviorPattern.trim(),
+                diaryContent: quickRecordForm.diaryContent.trim(),
+            });
+
+            await createHealthRecord({
+                dogId: Number(selectedDogId),
+                recordedDate: today,
+                weight: quickRecordForm.weight ? Number(quickRecordForm.weight) : null,
+                healthStatus: quickRecordForm.healthStatus,
+                symptoms: quickRecordForm.symptoms.trim(),
+                memo: quickRecordForm.memo.trim(),
+            });
+
+            alert("오늘 기록이 저장되었습니다.");
+            closeQuickRecord();
+            await fetchCareData(selectedDogId);
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "오늘 기록 저장에 실패했습니다.");
         } finally {
             setIsSubmitting(false);
         }
@@ -577,24 +736,15 @@ export default function CarePage() {
                     <section className="mx-auto max-w-7xl px-8 py-12">
                         <CareSummary summary={careSummary} selectedDog={selectedDog} />
 
-                        <div className="mt-10 border-b border-gray-200">
-                            <div className="grid grid-cols-2 md:grid-cols-4">
-                                {tabs.map((tab) => (
-                                    <button
-                                        key={tab.key}
-                                        type="button"
-                                        onClick={() => setActiveTab(tab.key)}
-                                        className={`h-14 border-b-2 text-sm font-bold transition ${
-                                            activeTab === tab.key
-                                                ? "border-black text-black"
-                                                : "border-transparent text-gray-400 hover:text-gray-700"
-                                        }`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        <QuickRecordBanner
+                            selectedDog={selectedDog}
+                            onStart={openQuickRecord}
+                        />
+
+                        <CareTabs
+                            activeTab={activeTab}
+                            onChange={setActiveTab}
+                        />
 
                         {activeTab === "walk" && (
                             <WalkSection
@@ -650,6 +800,21 @@ export default function CarePage() {
                         )}
                     </section>
                 )}
+
+                {quickRecordOpen && (
+                    <QuickRecordModal
+                        form={quickRecordForm}
+                        step={quickStep}
+                        isSubmitting={isSubmitting}
+                        selectedDog={selectedDog}
+                        onChange={handleQuickRecordChange}
+                        onEmotionSelect={handleQuickEmotionSelect}
+                        onPrev={() => setQuickStep((prevStep) => Math.max(prevStep - 1, 0))}
+                        onNext={() => setQuickStep((prevStep) => Math.min(prevStep + 1, quickSteps.length - 1))}
+                        onClose={closeQuickRecord}
+                        onSubmit={handleQuickRecordSubmit}
+                    />
+                )}
             </main>
         </>
     );
@@ -681,43 +846,373 @@ function CareSummary({ summary, selectedDog }) {
     );
 }
 
+// 오늘 기록 빠른 시작
+function QuickRecordBanner({ selectedDog, onStart }) {
+    return (
+        <section className="mt-6 border border-gray-200 bg-gray-50 p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p className="text-sm font-bold tracking-[0.25em] text-emerald-600">TODAY CARE</p>
+                    <h2 className="mt-3 text-2xl font-bold text-gray-950">
+                        오늘 {selectedDog?.name || "반려견"} 기록하기
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-gray-500">
+                        산책, 감정, 건강 체크를 한 번에 남겨두면 매일 기록하기가 훨씬 가벼워집니다.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onStart}
+                    className="h-12 shrink-0 rounded-full bg-black px-8 text-sm font-bold text-white transition hover:opacity-80"
+                >
+                    오늘 기록하기
+                </button>
+            </div>
+        </section>
+    );
+}
+
+// 케어 탭
+function CareTabs({ activeTab, onChange }) {
+    return (
+        <nav className="mt-8 grid border-b border-gray-200 sm:grid-cols-4">
+            {tabs.map((tab) => {
+                const active = activeTab === tab.key;
+
+                return (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => onChange(tab.key)}
+                        className={`h-14 border-b-2 text-sm font-bold transition ${
+                            active
+                                ? "border-black text-black"
+                                : "border-transparent text-gray-400 hover:text-gray-700"
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                );
+            })}
+        </nav>
+    );
+}
+
+// 오늘 기록 모달
+function QuickRecordModal({
+    form,
+    step,
+    isSubmitting,
+    selectedDog,
+    onChange,
+    onEmotionSelect,
+    onPrev,
+    onNext,
+    onClose,
+    onSubmit,
+}) {
+    const isFirstStep = step === 0;
+    const isLastStep = step === quickSteps.length - 1;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-2xl border border-gray-200 bg-white p-6 shadow-2xl">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-sm font-bold tracking-[0.3em] text-emerald-600">TODAY</p>
+                        <h2 className="mt-3 text-2xl font-bold text-gray-950">
+                            오늘 {selectedDog?.name || "반려견"} 기록
+                        </h2>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="h-10 w-10 border border-gray-200 text-lg font-bold text-gray-500 transition hover:bg-gray-50"
+                        aria-label="닫기"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <QuickStepIndicator step={step} />
+
+                <div className="mt-8 min-h-[320px]">
+                    {step === 0 && (
+                        <div className="grid gap-6">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-950">오늘 산책 했나요?</h3>
+                                <div className="mt-4 grid grid-cols-2 gap-3">
+                                    {[
+                                        { value: "yes", label: "예" },
+                                        { value: "no", label: "아니오" },
+                                    ].map((option) => (
+                                        <label
+                                            key={option.value}
+                                            className={`flex h-12 cursor-pointer items-center justify-center border text-sm font-bold transition ${
+                                                form.hasWalk === option.value
+                                                    ? "border-black bg-black text-white"
+                                                    : "border-gray-200 text-gray-600 hover:border-gray-400"
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="hasWalk"
+                                                value={option.value}
+                                                checked={form.hasWalk === option.value}
+                                                onChange={onChange}
+                                                className="sr-only"
+                                            />
+                                            {option.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {form.hasWalk === "yes" && (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <QuickField label="산책 시간">
+                                        <input
+                                            type="number"
+                                            name="durationMinutes"
+                                            min="1"
+                                            value={form.durationMinutes}
+                                            onChange={onChange}
+                                            className="input"
+                                            placeholder="45분"
+                                        />
+                                    </QuickField>
+                                    <QuickField label="산책 거리">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            name="distanceKm"
+                                            min="0"
+                                            value={form.distanceKm}
+                                            onChange={onChange}
+                                            className="input"
+                                            placeholder="2.3km"
+                                        />
+                                    </QuickField>
+                                    <QuickField label="산책 후 상태">
+                                        <select
+                                            name="conditionAfterWalk"
+                                            value={form.conditionAfterWalk}
+                                            onChange={onChange}
+                                            className="input"
+                                        >
+                                            {Object.entries(conditionAfterWalkLabels).map(([value, label]) => (
+                                                <option key={value} value={value}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </QuickField>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {step === 1 && (
+                        <div className="grid gap-6">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-950">오늘 기분은?</h3>
+                                <div className="mt-5 grid grid-cols-5 gap-3">
+                                    {quickEmotionOptions.map((option) => {
+                                        const active = form.emotion === option.value;
+
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => onEmotionSelect(option)}
+                                                className={`grid h-24 place-items-center border text-center transition ${
+                                                    active
+                                                        ? "border-black bg-black text-white"
+                                                        : "border-gray-200 text-gray-700 hover:border-gray-400"
+                                                }`}
+                                            >
+                                                <span className="text-3xl">{option.icon}</span>
+                                                <span className="text-xs font-bold">{option.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <QuickField label="행동 패턴">
+                                    <input
+                                        name="behaviorPattern"
+                                        value={form.behaviorPattern}
+                                        onChange={onChange}
+                                        className="input"
+                                        placeholder="예: 산책 후 잘 쉬었어요"
+                                    />
+                                </QuickField>
+                                <QuickField label="컨디션 점수">
+                                    <input
+                                        type="number"
+                                        name="conditionLevel"
+                                        min="1"
+                                        max="5"
+                                        value={form.conditionLevel}
+                                        onChange={onChange}
+                                        className="input"
+                                    />
+                                </QuickField>
+                            </div>
+                            <QuickField label="일기 메모">
+                                <textarea
+                                    name="diaryContent"
+                                    value={form.diaryContent}
+                                    onChange={onChange}
+                                    className="textarea"
+                                    placeholder="오늘 감정이나 행동 변화를 짧게 남겨주세요"
+                                />
+                            </QuickField>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div className="grid gap-5">
+                            <h3 className="text-2xl font-bold text-gray-950">건강 상태도 같이 남겨볼까요?</h3>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <QuickField label="몸무게">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        name="weight"
+                                        value={form.weight}
+                                        onChange={onChange}
+                                        className="input"
+                                        placeholder="5.8kg"
+                                    />
+                                </QuickField>
+                                <QuickField label="건강 상태">
+                                    <select
+                                        name="healthStatus"
+                                        value={form.healthStatus}
+                                        onChange={onChange}
+                                        className="input"
+                                    >
+                                        {Object.entries(healthLabels).map(([value, label]) => (
+                                            <option key={value} value={value}>{label}</option>
+                                        ))}
+                                    </select>
+                                </QuickField>
+                            </div>
+                            <QuickField label="증상">
+                                <input
+                                    name="symptoms"
+                                    value={form.symptoms}
+                                    onChange={onChange}
+                                    className="input"
+                                    placeholder="예: 특이 증상 없음"
+                                />
+                            </QuickField>
+                            <QuickField label="건강 메모">
+                                <textarea
+                                    name="memo"
+                                    value={form.memo}
+                                    onChange={onChange}
+                                    className="textarea"
+                                    placeholder="오늘 건강 상태를 짧게 남겨주세요"
+                                />
+                            </QuickField>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-8 grid grid-cols-[1fr_1fr] gap-3 sm:grid-cols-[120px_1fr_160px]">
+                    <button
+                        type="button"
+                        onClick={isFirstStep ? onClose : onPrev}
+                        className="h-12 border border-gray-200 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
+                    >
+                        {isFirstStep ? "닫기" : "이전"}
+                    </button>
+                    <div className="hidden sm:block" />
+                    <button
+                        type="button"
+                        onClick={isLastStep ? onSubmit : onNext}
+                        disabled={isSubmitting}
+                        className="h-12 bg-black text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
+                    >
+                        {isSubmitting ? "저장 중..." : isLastStep ? "저장" : "다음"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function QuickStepIndicator({ step }) {
+    return (
+        <div className="mt-6 grid grid-cols-3 gap-2">
+            {quickSteps.map((item, index) => {
+                const active = step === index;
+                const done = step > index;
+
+                return (
+                    <div
+                        key={item.key}
+                        className={`h-2 rounded-full ${
+                            active || done ? "bg-black" : "bg-gray-200"
+                        }`}
+                        aria-label={item.label}
+                    />
+                );
+            })}
+        </div>
+    );
+}
+
+function QuickField({ label, children }) {
+    return (
+        <label className="grid gap-2 text-sm font-bold text-gray-700">
+            {label}
+            {children}
+        </label>
+    );
+}
+
 // 산책 기록 영역
 function WalkSection({ form, records, isSubmitting, isEditing, onChange, onSubmit, onReset, onEdit, onDelete }) {
     return (
-        <div className="grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
-            <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
-                <FormTitle label="WALK" title={isEditing ? "산책 기록 수정" : "산책 기록 작성"} />
-                <div className="grid gap-4">
-                    <InputField label="시작 시간">
-                        <input type="datetime-local" name="startedAt" value={form.startedAt} onChange={onChange} className="input" />
-                    </InputField>
-                    <InputField label="종료 시간">
-                        <input type="datetime-local" name="endedAt" value={form.endedAt} onChange={onChange} className="input" />
-                    </InputField>
-                    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-                        <InputField label="산책 시간">
-                            <input type="number" name="durationMinutes" min="1" value={form.durationMinutes} onChange={onChange} className="input" placeholder="분" />
+        <div className={`grid gap-8 py-8 ${isEditing ? "lg:grid-cols-[420px_1fr]" : ""}`}>
+            {isEditing && (
+                <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
+                    <FormTitle label="WALK" title="산책 기록 수정" />
+                    <div className="grid gap-4">
+                        <InputField label="시작 시간">
+                            <input type="datetime-local" name="startedAt" value={form.startedAt} onChange={onChange} className="input" />
                         </InputField>
-                        <InputField label="산책 거리">
-                            <input type="number" step="0.01" name="distanceKm" min="0" value={form.distanceKm} onChange={onChange} className="input" placeholder="km" />
+                        <InputField label="종료 시간">
+                            <input type="datetime-local" name="endedAt" value={form.endedAt} onChange={onChange} className="input" />
+                        </InputField>
+                        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                            <InputField label="산책 시간">
+                                <input type="number" name="durationMinutes" min="1" value={form.durationMinutes} onChange={onChange} className="input" placeholder="분" />
+                            </InputField>
+                            <InputField label="산책 거리">
+                                <input type="number" step="0.01" name="distanceKm" min="0" value={form.distanceKm} onChange={onChange} className="input" placeholder="km" />
+                            </InputField>
+                        </div>
+                        <InputField label="산책 후 상태">
+                            <select name="conditionAfterWalk" value={form.conditionAfterWalk} onChange={onChange} className="input">
+                                {Object.entries(conditionAfterWalkLabels).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
+                        </InputField>
+                        <InputField label="경로 요약">
+                            <input name="routeSummary" value={form.routeSummary} onChange={onChange} className="input" placeholder="예: 남강공원 한 바퀴" />
+                        </InputField>
+                        <InputField label="메모">
+                            <textarea name="memo" value={form.memo} onChange={onChange} className="textarea" placeholder="산책 중 특이사항을 기록해주세요" />
                         </InputField>
                     </div>
-                    <InputField label="산책 후 상태">
-                        <select name="conditionAfterWalk" value={form.conditionAfterWalk} onChange={onChange} className="input">
-                            {Object.entries(conditionAfterWalkLabels).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
-                        </select>
-                    </InputField>
-                    <InputField label="경로 요약">
-                        <input name="routeSummary" value={form.routeSummary} onChange={onChange} className="input" placeholder="예: 남강공원 한 바퀴" />
-                    </InputField>
-                    <InputField label="메모">
-                        <textarea name="memo" value={form.memo} onChange={onChange} className="textarea" placeholder="산책 중 특이사항을 기록해주세요" />
-                    </InputField>
-                </div>
-                <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
-            </form>
+                    <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
+                </form>
+            )}
 
             <RecordList emptyText="아직 산책 기록이 없습니다.">
                 {records.map((record) => (
@@ -738,42 +1233,44 @@ function WalkSection({ form, records, isSubmitting, isEditing, onChange, onSubmi
 // 감정 일기 영역
 function EmotionSection({ form, walkRecords, diaries, isSubmitting, isEditing, onChange, onSubmit, onReset, onEdit, onDelete }) {
     return (
-        <div className="grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
-            <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
-                <FormTitle label="EMOTION" title={isEditing ? "감정 일기 수정" : "감정 일기 작성"} />
-                <div className="grid gap-4">
-                    <InputField label="기록일">
-                        <input type="date" name="recordedDate" value={form.recordedDate} onChange={onChange} className="input" />
-                    </InputField>
-                    <InputField label="연결 산책 기록">
-                        <select name="walkRecordId" value={form.walkRecordId} onChange={onChange} className="input">
-                            <option value="">연결 안 함</option>
-                            {walkRecords.map((record) => (
-                                <option key={record.walkRecordId} value={record.walkRecordId}>
-                                    {formatDateOnly(record.startedAt)} · {record.routeSummary || `${record.durationMinutes || "-"}분 산책`}
-                                </option>
-                            ))}
-                        </select>
-                    </InputField>
-                    <InputField label="감정">
-                        <select name="emotion" value={form.emotion} onChange={onChange} className="input">
-                            {Object.entries(emotionLabels).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
-                        </select>
-                    </InputField>
-                    <InputField label="컨디션 점수">
-                        <input type="number" name="conditionLevel" min="1" max="5" value={form.conditionLevel} onChange={onChange} className="input" />
-                    </InputField>
-                    <InputField label="행동 패턴">
-                        <input name="behaviorPattern" value={form.behaviorPattern} onChange={onChange} className="input" placeholder="예: 산책 후 잘 쉬었어요" />
-                    </InputField>
-                    <InputField label="일기 내용">
-                        <textarea name="diaryContent" value={form.diaryContent} onChange={onChange} className="textarea" placeholder="오늘의 감정과 행동 변화를 기록해주세요" />
-                    </InputField>
-                </div>
-                <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
-            </form>
+        <div className={`grid gap-8 py-8 ${isEditing ? "lg:grid-cols-[420px_1fr]" : ""}`}>
+            {isEditing && (
+                <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
+                    <FormTitle label="EMOTION" title="감정 일기 수정" />
+                    <div className="grid gap-4">
+                        <InputField label="기록일">
+                            <input type="date" name="recordedDate" value={form.recordedDate} onChange={onChange} className="input" />
+                        </InputField>
+                        <InputField label="연결 산책 기록">
+                            <select name="walkRecordId" value={form.walkRecordId} onChange={onChange} className="input">
+                                <option value="">연결 안 함</option>
+                                {walkRecords.map((record) => (
+                                    <option key={record.walkRecordId} value={record.walkRecordId}>
+                                        {formatDateOnly(record.startedAt)} · {record.routeSummary || `${record.durationMinutes || "-"}분 산책`}
+                                    </option>
+                                ))}
+                            </select>
+                        </InputField>
+                        <InputField label="감정">
+                            <select name="emotion" value={form.emotion} onChange={onChange} className="input">
+                                {Object.entries(emotionLabels).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
+                        </InputField>
+                        <InputField label="컨디션 점수">
+                            <input type="number" name="conditionLevel" min="1" max="5" value={form.conditionLevel} onChange={onChange} className="input" />
+                        </InputField>
+                        <InputField label="행동 패턴">
+                            <input name="behaviorPattern" value={form.behaviorPattern} onChange={onChange} className="input" placeholder="예: 산책 후 잘 쉬었어요" />
+                        </InputField>
+                        <InputField label="일기 내용">
+                            <textarea name="diaryContent" value={form.diaryContent} onChange={onChange} className="textarea" placeholder="오늘의 감정과 행동 변화를 기록해주세요" />
+                        </InputField>
+                    </div>
+                    <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
+                </form>
+            )}
 
             <RecordList emptyText="아직 감정 일기가 없습니다.">
                 {diaries.map((diary) => (
@@ -794,32 +1291,34 @@ function EmotionSection({ form, walkRecords, diaries, isSubmitting, isEditing, o
 // 건강 기록 영역
 function HealthSection({ form, records, isSubmitting, isEditing, onChange, onSubmit, onReset, onEdit, onDelete }) {
     return (
-        <div className="grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
-            <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
-                <FormTitle label="HEALTH" title={isEditing ? "건강 기록 수정" : "건강 기록 작성"} />
-                <div className="grid gap-4">
-                    <InputField label="기록일">
-                        <input type="date" name="recordedDate" value={form.recordedDate} onChange={onChange} className="input" />
-                    </InputField>
-                    <InputField label="몸무게">
-                        <input type="number" step="0.01" name="weight" value={form.weight} onChange={onChange} className="input" placeholder="kg" />
-                    </InputField>
-                    <InputField label="건강 상태">
-                        <select name="healthStatus" value={form.healthStatus} onChange={onChange} className="input">
-                            {Object.entries(healthLabels).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
-                        </select>
-                    </InputField>
-                    <InputField label="증상">
-                        <input name="symptoms" value={form.symptoms} onChange={onChange} className="input" placeholder="예: 기침, 식욕 저하" />
-                    </InputField>
-                    <InputField label="메모">
-                        <textarea name="memo" value={form.memo} onChange={onChange} className="textarea" placeholder="오늘의 건강 상태를 기록해주세요" />
-                    </InputField>
-                </div>
-                <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
-            </form>
+        <div className={`grid gap-8 py-8 ${isEditing ? "lg:grid-cols-[420px_1fr]" : ""}`}>
+            {isEditing && (
+                <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
+                    <FormTitle label="HEALTH" title="건강 기록 수정" />
+                    <div className="grid gap-4">
+                        <InputField label="기록일">
+                            <input type="date" name="recordedDate" value={form.recordedDate} onChange={onChange} className="input" />
+                        </InputField>
+                        <InputField label="몸무게">
+                            <input type="number" step="0.01" name="weight" value={form.weight} onChange={onChange} className="input" placeholder="kg" />
+                        </InputField>
+                        <InputField label="건강 상태">
+                            <select name="healthStatus" value={form.healthStatus} onChange={onChange} className="input">
+                                {Object.entries(healthLabels).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
+                        </InputField>
+                        <InputField label="증상">
+                            <input name="symptoms" value={form.symptoms} onChange={onChange} className="input" placeholder="예: 기침, 식욕 저하" />
+                        </InputField>
+                        <InputField label="메모">
+                            <textarea name="memo" value={form.memo} onChange={onChange} className="textarea" placeholder="오늘의 건강 상태를 기록해주세요" />
+                        </InputField>
+                    </div>
+                    <FormActions isSubmitting={isSubmitting} isEditing={isEditing} onReset={onReset} />
+                </form>
+            )}
 
             <RecordList emptyText="아직 건강 기록이 없습니다.">
                 {records.map((record) => (
@@ -840,7 +1339,7 @@ function HealthSection({ form, records, isSubmitting, isEditing, onChange, onSub
 // AI 분석 영역
 function AnalysisSection({ analysisType, analyses, isSubmitting, onTypeChange, onCreate }) {
     return (
-        <div className="grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
+        <div className="grid gap-8 py-8 lg:grid-cols-[420px_1fr]">
             <div className="h-fit border border-gray-200 p-6">
                 <FormTitle label="AI CARE" title="AI 분석 생성" />
                 <InputField label="분석 유형">
@@ -908,10 +1407,10 @@ function FormActions({ isSubmitting, isEditing, onReset }) {
     return (
         <div className="mt-6 grid grid-cols-2 gap-3">
             <button type="button" onClick={onReset} className="h-12 border border-gray-200 text-sm font-bold transition hover:bg-gray-50">
-                초기화
+                취소
             </button>
             <button type="submit" disabled={isSubmitting} className="h-12 bg-black text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300">
-                {isSubmitting ? "저장 중..." : isEditing ? "수정하기" : "등록하기"}
+                {isSubmitting ? "저장 중..." : isEditing ? "수정하기" : "저장하기"}
             </button>
         </div>
     );
@@ -957,4 +1456,8 @@ function toDatetimeLocalValue(value) {
 
 function formatDateOnly(value) {
     return value ? value.slice(0, 10) : "-";
+}
+
+function normalizeCareTab(tab) {
+    return tabs.some((item) => item.key === tab) ? tab : "walk";
 }

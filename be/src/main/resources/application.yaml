@@ -96,3 +96,8 @@ app:
     owner-name-param: ${ANIMAL_REGISTRATION_API_OWNER_NAME_PARAM:owner_nm}
     response-type-param: ${ANIMAL_REGISTRATION_API_RESPONSE_TYPE_PARAM:_type}
     response-type: ${ANIMAL_REGISTRATION_API_RESPONSE_TYPE:json}
+  gemini:
+    enabled: ${GEMINI_AI_ENABLED:false}
+    api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta}
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-2.0-flash}

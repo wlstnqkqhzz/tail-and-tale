@@ -33,6 +33,8 @@ public class AiAnalysisService {
     private final EmotionDiaryService emotionDiaryService;
     private final HealthRecordService healthRecordService;
     private final WalkRecordService walkRecordService;
+    private final AiAnalysisPromptBuilder aiAnalysisPromptBuilder;
+    private final AiAnalysisClient aiAnalysisClient;
 
     // AI 분석 생성
     @Transactional
@@ -61,13 +63,21 @@ public class AiAnalysisService {
                 startDate,
                 endDate
         );
+        List<WalkRecordDto.Response> recentWalkRecords = walkRecordService.getMyWalkRecords(memberId, dog.getId());
+        List<EmotionDiaryDto.Response> recentEmotionDiaries = emotionDiaryService.getMyEmotionDiaries(memberId, dog.getId());
+        List<HealthRecordDto.Response> recentHealthRecords = healthRecordService.getMyHealthRecords(memberId, dog.getId());
 
-        GeneratedAnalysis generatedAnalysis = generateAnalysis(
+        AiGeneratedAnalysis generatedAnalysis = generateAnalysisWithFallback(
                 dog,
                 request.getAnalysisType(),
+                startDate,
+                endDate,
                 emotionSummary,
                 healthSummary,
-                walkSummary
+                walkSummary,
+                recentWalkRecords,
+                recentEmotionDiaries,
+                recentHealthRecords
         );
 
         AiAnalysisResult aiAnalysisResult = AiAnalysisResult.create(
@@ -135,8 +145,47 @@ public class AiAnalysisService {
                 .orElseThrow(() -> new CustomException(DogErrorCode.DOG_NOT_FOUND));
     }
 
-    // 간단 AI 분석 생성
-    private GeneratedAnalysis generateAnalysis(
+    // Gemini 분석 생성 및 fallback 처리
+    private AiGeneratedAnalysis generateAnalysisWithFallback(
+            Dog dog,
+            AnalysisType analysisType,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionDiaryDto.SummaryResponse emotionSummary,
+            HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary,
+            List<WalkRecordDto.Response> walkRecords,
+            List<EmotionDiaryDto.Response> emotionDiaries,
+            List<HealthRecordDto.Response> healthRecords
+    ) {
+        try {
+            String prompt = aiAnalysisPromptBuilder.build(
+                    dog,
+                    analysisType,
+                    startDate,
+                    endDate,
+                    emotionSummary,
+                    healthSummary,
+                    walkSummary,
+                    walkRecords,
+                    emotionDiaries,
+                    healthRecords
+            );
+
+            return aiAnalysisClient.analyze(prompt);
+        } catch (Exception e) {
+            return generateFallbackAnalysis(
+                    dog,
+                    analysisType,
+                    emotionSummary,
+                    healthSummary,
+                    walkSummary
+            );
+        }
+    }
+
+    // 규칙 기반 fallback 분석 생성
+    private AiGeneratedAnalysis generateFallbackAnalysis(
             Dog dog,
             AnalysisType analysisType,
             EmotionDiaryDto.SummaryResponse emotionSummary,
@@ -148,7 +197,7 @@ public class AiAnalysisService {
         String resultContent = createResultContent(emotionSummary, healthSummary, walkSummary);
         String guideContent = createGuideContent(riskLevel, emotionSummary, healthSummary, walkSummary);
 
-        return new GeneratedAnalysis(summary, resultContent, riskLevel, guideContent);
+        return new AiGeneratedAnalysis(summary, resultContent, riskLevel, guideContent);
     }
 
     // 위험도 계산
@@ -250,11 +299,4 @@ public class AiAnalysisService {
         };
     }
 
-    private record GeneratedAnalysis(
-            String summary,
-            String resultContent,
-            RiskLevel riskLevel,
-            String guideContent
-    ) {
-    }
 }

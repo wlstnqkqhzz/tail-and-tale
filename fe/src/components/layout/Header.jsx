@@ -1,7 +1,7 @@
 // 공통 헤더 컴포넌트
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getNotifications, readAllNotifications, readNotification, readTargetNotifications } from "../../api/notification";
 import { logoutUser } from "../../utils/auth";
 import { useAuth } from "../../hooks/useAuth";
@@ -12,6 +12,7 @@ import { useToast } from "../common/ToastProvider";
 
 export default function Header({ onLoginClick }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const { isLoading, isLoggedIn, member } = useAuth();
     const { showToast } = useToast();
     const notificationStompClientRef = useRef(null);
@@ -154,11 +155,34 @@ export default function Header({ onLoginClick }) {
     return (
         <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-gray-100 bg-white">
             <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-8">
-                <div
-                    onClick={() => navigate("/")}
-                    className="cursor-pointer text-2xl font-bold"
-                >
-                    Tail & Tale
+                <div className="flex items-center gap-10">
+                    <div
+                        onClick={() => navigate("/")}
+                        className="cursor-pointer text-2xl font-bold"
+                    >
+                        Tail & Tale
+                    </div>
+
+                    <nav className="hidden items-center gap-6 md:flex">
+                        <HeaderNavButton
+                            label="산책"
+                            path="/walks"
+                            isActive={location.pathname.startsWith("/walks")}
+                            onClick={movePage}
+                        />
+                        <HeaderNavButton
+                            label="커뮤니티"
+                            path="/community"
+                            isActive={location.pathname.startsWith("/community")}
+                            onClick={movePage}
+                        />
+                        <HeaderNavButton
+                            label="케어"
+                            path="/care"
+                            isActive={location.pathname.startsWith("/care")}
+                            onClick={movePage}
+                        />
+                    </nav>
                 </div>
 
                 <div className="flex h-10 items-center justify-end gap-3">
@@ -268,6 +292,23 @@ export default function Header({ onLoginClick }) {
                 </div>
             </div>
         </header>
+    );
+}
+
+// 헤더 메인 메뉴 버튼
+function HeaderNavButton({ label, path, isActive, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={() => onClick(path)}
+            className={`text-sm font-bold transition ${
+                isActive
+                    ? "text-gray-950"
+                    : "text-gray-400 hover:text-gray-950"
+            }`}
+        >
+            {label}
+        </button>
     );
 }
 

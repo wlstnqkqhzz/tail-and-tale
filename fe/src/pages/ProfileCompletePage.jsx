@@ -200,6 +200,17 @@ export default function MyPage() {
         }
     };
 
+    // 케어 페이지 이동
+    const moveCarePage = (tab, dogId) => {
+        const params = new URLSearchParams({ tab });
+
+        if (dogId) {
+            params.set("dogId", String(dogId));
+        }
+
+        navigate(`/care?${params.toString()}`);
+    };
+
     return (
         <>
             <Header />
@@ -383,7 +394,7 @@ export default function MyPage() {
                                     count={walkRecords.length}
                                     emptyText="작성한 산책 기록이 없습니다."
                                     actionLabel="산책 기록 관리"
-                                    onAction={() => navigate("/care")}
+                                    onAction={() => moveCarePage("walk", walkRecords[0]?.dogId)}
                                 >
                                     <div className="grid gap-3">
                                         {walkRecords.slice(0, 4).map((record) => (
@@ -392,7 +403,7 @@ export default function MyPage() {
                                                 title={`${conditionAfterWalkLabels[record.conditionAfterWalk] || "상태 미입력"} · ${record.durationMinutes ? `${record.durationMinutes}분` : "시간 미입력"}`}
                                                 meta={`${formatDateOnly(record.startedAt)} · ${record.dogName}`}
                                                 content={record.memo || record.routeSummary || "기록된 내용이 없습니다."}
-                                                onClick={() => navigate("/care")}
+                                                onClick={() => moveCarePage("walk", record.dogId)}
                                             />
                                         ))}
                                     </div>
@@ -405,7 +416,7 @@ export default function MyPage() {
                                     count={emotionDiaries.length}
                                     emptyText="작성한 감정 일기가 없습니다."
                                     actionLabel="감정 일기 관리"
-                                    onAction={() => navigate("/care")}
+                                    onAction={() => moveCarePage("emotion", emotionDiaries[0]?.dogId)}
                                 >
                                     <div className="grid gap-3">
                                         {emotionDiaries.slice(0, 4).map((diary) => (
@@ -414,7 +425,7 @@ export default function MyPage() {
                                                 title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
                                                 meta={`${diary.recordedDate} · ${diary.dogName}`}
                                                 content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
-                                                onClick={() => navigate("/care")}
+                                                onClick={() => moveCarePage("emotion", diary.dogId)}
                                             />
                                         ))}
                                     </div>
@@ -427,7 +438,7 @@ export default function MyPage() {
                                     count={healthRecords.length}
                                     emptyText="작성한 건강 기록이 없습니다."
                                     actionLabel="건강 체크 관리"
-                                    onAction={() => navigate("/care")}
+                                    onAction={() => moveCarePage("health", healthRecords[0]?.dogId)}
                                 >
                                     <div className="grid gap-3">
                                         {healthRecords.slice(0, 4).map((record) => (
@@ -436,7 +447,7 @@ export default function MyPage() {
                                                 title={`${healthLabels[record.healthStatus] || "상태 미입력"} · ${record.weight ? `${record.weight}kg` : "몸무게 미입력"}`}
                                                 meta={`${record.recordedDate} · ${record.dogName}`}
                                                 content={record.memo || record.symptoms || "기록된 내용이 없습니다."}
-                                                onClick={() => navigate("/care")}
+                                                onClick={() => moveCarePage("health", record.dogId)}
                                             />
                                         ))}
                                     </div>
@@ -449,7 +460,7 @@ export default function MyPage() {
                                     count={aiAnalyses.length}
                                     emptyText="생성한 AI 분석 결과가 없습니다."
                                     actionLabel="AI 분석 관리"
-                                    onAction={() => navigate("/care")}
+                                    onAction={() => moveCarePage("analysis", aiAnalyses[0]?.dogId)}
                                 >
                                     <div className="grid gap-3">
                                         {aiAnalyses.slice(0, 4).map((analysis) => (
@@ -458,7 +469,7 @@ export default function MyPage() {
                                                 title={analysis.summary}
                                                 meta={`${analysisLabels[analysis.analysisType]} · ${analysis.dogName}`}
                                                 content={analysis.guideContent || analysis.resultContent}
-                                                onClick={() => navigate("/care")}
+                                                onClick={() => moveCarePage("analysis", analysis.dogId)}
                                             />
                                         ))}
                                     </div>
