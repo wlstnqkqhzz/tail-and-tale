@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
+import RegionSelect from "../components/common/RegionSelect";
 import { getDogs } from "../api/dog";
 import { createWalkSchedule } from "../api/walk";
 import { getAccessToken } from "../utils/token";
+import { isCompleteRegionValue } from "../constants/regions";
 
 const initialForm = {
     dogId: "",
@@ -13,13 +15,10 @@ const initialForm = {
     description: "",
     region: "",
     meetingPlace: "",
-    latitude: "",
-    longitude: "",
     scheduledAt: "",
     expectedDurationMinutes: "",
     maxParticipants: "2",
     preferredDogSize: "ANY",
-    preferredPersonality: "",
 };
 
 const WALK_CREATE_NOTICE_KEY = "walkCreateAccessNotice";
@@ -115,15 +114,15 @@ export default function WalkCreatePage() {
         description: form.description.trim(),
         region: form.region.trim(),
         meetingPlace: form.meetingPlace.trim(),
-        latitude: form.latitude ? Number(form.latitude) : null,
-        longitude: form.longitude ? Number(form.longitude) : null,
+        latitude: null,
+        longitude: null,
         scheduledAt: form.scheduledAt,
         expectedDurationMinutes: form.expectedDurationMinutes
             ? Number(form.expectedDurationMinutes)
             : null,
         maxParticipants: Number(form.maxParticipants),
         preferredDogSize: form.preferredDogSize || "ANY",
-        preferredPersonality: form.preferredPersonality.trim(),
+        preferredPersonality: "",
     });
 
     // 입력값 검증
@@ -155,6 +154,10 @@ export default function WalkCreatePage() {
 
         if (!form.region.trim()) {
             return "산책 지역을 입력해주세요.";
+        }
+
+        if (!isCompleteRegionValue(form.region)) {
+            return "산책 지역은 시/도와 시/군/구를 모두 선택해주세요.";
         }
 
         if (!form.meetingPlace.trim()) {
@@ -230,7 +233,7 @@ export default function WalkCreatePage() {
                             산책 일정을 작성해보세요
                         </h1>
                         <p className="mt-5 max-w-2xl text-base leading-7 text-gray-500">
-                            반려견, 만남 장소, 시간, 모집 조건을 입력하면 다른 회원들이 상세 페이지에서 참여를 신청할 수 있습니다.
+                            반려견, 만남 장소, 시간을 입력하면 다른 회원들이 상세 페이지에서 참여를 신청할 수 있습니다.
                         </p>
                     </div>
                 </section>
@@ -290,7 +293,7 @@ export default function WalkCreatePage() {
                                     value={form.description}
                                     onChange={handleChange}
                                     className="min-h-32 w-full resize-none border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-black"
-                                    placeholder="산책 분위기, 원하는 매너, 준비물 등을 적어주세요"
+                                    placeholder="예: 잔잔한 강변길에서 천천히 걷는 45분 코스입니다. 낯가림이 심하지 않고 천천히 걷는 친구면 좋아요. 물과 배변봉투를 챙겨와 주세요."
                                 />
                             </Field>
                         </FormSection>
@@ -298,12 +301,10 @@ export default function WalkCreatePage() {
                         <FormSection title="장소와 시간">
                             <div className="grid gap-5 md:grid-cols-2">
                                 <Field label="지역">
-                                    <input
-                                        name="region"
+                                    <RegionSelect
                                         value={form.region}
-                                        onChange={handleChange}
-                                        className="h-12 w-full border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                                        placeholder="예: 경남 진주"
+                                        onChange={(region) => setForm((prevForm) => ({ ...prevForm, region }))}
+                                        selectClassName="h-12 w-full border border-gray-200 px-4 text-sm outline-none transition focus:border-black disabled:bg-gray-50"
                                     />
                                 </Field>
 
@@ -353,44 +354,6 @@ export default function WalkCreatePage() {
                                     />
                                 </Field>
                             </div>
-
-                            <div className="grid gap-5 md:grid-cols-2">
-                                <Field label="위도">
-                                    <input
-                                        type="number"
-                                        step="0.000001"
-                                        name="latitude"
-                                        value={form.latitude}
-                                        onChange={handleChange}
-                                        className="h-12 w-full border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                                        placeholder="선택 입력"
-                                    />
-                                </Field>
-
-                                <Field label="경도">
-                                    <input
-                                        type="number"
-                                        step="0.000001"
-                                        name="longitude"
-                                        value={form.longitude}
-                                        onChange={handleChange}
-                                        className="h-12 w-full border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                                        placeholder="선택 입력"
-                                    />
-                                </Field>
-                            </div>
-                        </FormSection>
-
-                        <FormSection title="모집 조건">
-                            <Field label="선호 성향">
-                                <input
-                                    name="preferredPersonality"
-                                    value={form.preferredPersonality}
-                                    onChange={handleChange}
-                                    className="h-12 w-full border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                                    placeholder="예: 사교적인 강아지, 천천히 걷는 친구"
-                                />
-                            </Field>
                         </FormSection>
 
                         <div className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-8">

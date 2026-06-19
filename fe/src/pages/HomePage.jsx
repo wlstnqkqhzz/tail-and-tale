@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import AuthModal from "../components/auth/AuthModal";
 import { useAuth } from "../hooks/useAuth";
 import { getAccessToken } from "../utils/token";
+import { getWalkSchedules } from "../api/walk";
+import { formatDateTime, formatDogSize } from "../utils/walkFormat";
 
 // 메인 랜딩 페이지
 
@@ -84,6 +86,8 @@ export default function HomePage() {
     const { isLoading, isLoggedIn, member } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeSlide, setActiveSlide] = useState(0);
+    const [walkSchedules, setWalkSchedules] = useState([]);
+    const [isWalkLoading, setIsWalkLoading] = useState(false);
 
     const maxSlideIndex = Math.max(carouselPanels.length - visiblePanelCount, 0);
     const carouselTranslateX = activeSlide * carouselPanelWidth;
@@ -95,6 +99,63 @@ export default function HomePage() {
 
         return `${member.nickname}님`;
     }, [member]);
+
+    const popularWalks = useMemo(() => (
+        [...walkSchedules]
+            .filter((schedule) => schedule.status === "OPEN")
+            .sort((first, second) => getParticipantScore(second) - getParticipantScore(first))
+            .slice(0, 3)
+    ), [walkSchedules]);
+
+    const regionWalks = useMemo(() => {
+        const memberRegion = normalizeRegion(member?.region);
+
+        if (!memberRegion) {
+            return [];
+        }
+
+        return walkSchedules
+            .filter((schedule) => (
+                schedule.status === "OPEN"
+                && isRegionMatched(memberRegion, normalizeRegion(schedule.region))
+            ))
+            .slice(0, 3);
+    }, [member?.region, walkSchedules]);
+
+    // 로그인 후 메인 추천 산책 조회
+    useEffect(() => {
+        if (!isLoggedIn) {
+            return;
+        }
+
+        let isMounted = true;
+
+        const fetchRecommendedWalks = async () => {
+            try {
+                setIsWalkLoading(true);
+
+                const response = await getWalkSchedules({ status: "OPEN" });
+
+                if (!isMounted) {
+                    return;
+                }
+
+                setWalkSchedules(response.data);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                if (isMounted) {
+                    setIsWalkLoading(false);
+                }
+            }
+        };
+
+        fetchRecommendedWalks();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [isLoggedIn]);
 
     // 산책 일정 페이지 이동
     const moveToWalks = () => {
@@ -211,6 +272,30 @@ export default function HomePage() {
                         {String(maxSlideIndex + 1).padStart(2, "0")}
                     </span>
                 </div>
+            </section>
+
+            <section className="mx-auto grid max-w-7xl gap-6 px-8 py-16 lg:grid-cols-2">
+                <HomeWalkSection
+                    eyebrow="POPULAR WALK"
+                    title="신청이 많은 산책 모집글"
+                    description="참여자와 대기 신청이 많은 산책을 먼저 모아봤어요."
+                    schedules={popularWalks}
+                    isLoading={isWalkLoading}
+                    emptyText="아직 신청이 많은 산책 모집글이 없습니다."
+                    onMoveToWalks={() => navigate("/walks")}
+                    onSelect={(schedule) => navigate(`/walks/${schedule.walkScheduleId}`)}
+                />
+
+                <HomeWalkSection
+                    eyebrow="NEARBY WALK"
+                    title={`${member?.region || "내 지역"} 기반 모집글`}
+                    description="내 거주지역과 가까운 산책 모집글을 확인해보세요."
+                    schedules={regionWalks}
+                    isLoading={isWalkLoading}
+                    emptyText="내 지역과 맞는 산책 모집글이 아직 없습니다."
+                    onMoveToWalks={() => navigate(member?.region ? `/walks?region=${encodeURIComponent(member.region)}` : "/walks")}
+                    onSelect={(schedule) => navigate(`/walks/${schedule.walkScheduleId}`)}
+                />
             </section>
 
             <section className="mx-auto max-w-6xl px-8 py-24">
@@ -369,4 +454,120 @@ function CarouselPanel({ panel, imageUrl, onMoveToWalks }) {
             </div>
         </div>
     );
+}
+
+function HomeWalkSection({
+    eyebrow,
+    title,
+    description,
+    schedules,
+    isLoading,
+    emptyText,
+    onMoveToWalks,
+    onSelect,
+}) {
+    return (
+        <div className="border border-gray-200 p-6">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs font-bold tracking-[0.35em] text-emerald-600">{eyebrow}</p>
+                    <h2 className="mt-3 text-2xl font-bold text-gray-950">{title}</h2>
+                    <p className="mt-2 text-sm leading-6 text-gray-500">{description}</p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onMoveToWalks}
+                    className="h-10 shrink-0 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
+                >
+                    더보기
+                </button>
+            </div>
+
+            <div className="mt-6 grid gap-3">
+                {isLoading ? (
+                    <div className="flex h-48 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                        추천 산책을 불러오는 중...
+                    </div>
+                ) : schedules.length === 0 ? (
+                    <div className="flex h-48 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                        {emptyText}
+                    </div>
+                ) : (
+                    schedules.map((schedule) => (
+                        <HomeWalkCard
+                            key={schedule.walkScheduleId}
+                            schedule={schedule}
+                            onClick={() => onSelect(schedule)}
+                        />
+                    ))
+                )}
+            </div>
+        </div>
+    );
+}
+
+function HomeWalkCard({ schedule, onClick }) {
+    const currentCount = schedule.currentParticipantCount ?? schedule.approvedParticipantCount ?? 0;
+    const pendingCount = schedule.pendingRequestCount ?? 0;
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="grid gap-4 border border-gray-100 p-5 text-left transition hover:border-gray-950 hover:shadow-lg md:grid-cols-[1fr_auto]"
+        >
+            <div className="min-w-0">
+                <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600">
+                        모집 중
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-500">
+                        {formatDogSize(schedule.preferredDogSize)}
+                    </span>
+                </div>
+                <h3 className="mt-3 line-clamp-1 text-lg font-bold text-gray-950">{schedule.title}</h3>
+                <p className="mt-2 line-clamp-1 text-sm text-gray-500">{schedule.description || "등록된 설명이 없습니다."}</p>
+                <div className="mt-4 grid gap-2 text-xs text-gray-400 sm:grid-cols-2">
+                    <span>{schedule.region || "지역 미입력"}</span>
+                    <span>{formatDateTime(schedule.scheduledAt)}</span>
+                </div>
+            </div>
+
+            <div className="flex items-end justify-between gap-4 border-t border-gray-100 pt-4 md:block md:min-w-24 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+                <div>
+                    <p className="text-xs font-bold text-gray-400">참여</p>
+                    <p className="mt-1 text-lg font-bold text-gray-950">
+                        {currentCount}/{schedule.maxParticipants ?? "-"}명
+                    </p>
+                </div>
+                <div className="md:mt-4">
+                    <p className="text-xs font-bold text-gray-400">대기</p>
+                    <p className="mt-1 text-lg font-bold text-gray-950">{pendingCount}건</p>
+                </div>
+            </div>
+        </button>
+    );
+}
+
+function getParticipantScore(schedule) {
+    return (
+        (schedule.currentParticipantCount ?? 0)
+        + (schedule.approvedParticipantCount ?? 0)
+        + ((schedule.pendingRequestCount ?? 0) * 0.5)
+    );
+}
+
+function normalizeRegion(region) {
+    return (region || "")
+        .replace(/\s/g, "")
+        .replace(/특별시|광역시|특별자치시|특별자치도|도|시|군|구|동|읍|면/g, "")
+        .toLowerCase();
+}
+
+function isRegionMatched(memberRegion, scheduleRegion) {
+    if (!memberRegion || !scheduleRegion) {
+        return false;
+    }
+
+    return scheduleRegion.includes(memberRegion) || memberRegion.includes(scheduleRegion);
 }

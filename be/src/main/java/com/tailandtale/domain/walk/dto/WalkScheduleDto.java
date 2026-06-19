@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,6 +49,10 @@ public class WalkScheduleDto {
         private String description;
 
         @NotBlank(message = "산책 지역은 필수입니다.")
+        @Pattern(
+                regexp = "^([가-힣]+(특별시|광역시|특별자치시|특별자치도|도)\\s[가-힣]+(시|군|구))$",
+                message = "산책 지역은 시/도와 시/군/구를 모두 선택해주세요."
+        )
         private String region;
 
         @NotBlank(message = "만남 장소는 필수입니다.")
@@ -78,6 +83,10 @@ public class WalkScheduleDto {
         private Long dogId;
         private String title;
         private String description;
+        @Pattern(
+                regexp = "^([가-힣]+(특별시|광역시|특별자치시|특별자치도|도)\\s[가-힣]+(시|군|구))$",
+                message = "산책 지역은 시/도와 시/군/구를 모두 선택해주세요."
+        )
         private String region;
         private String meetingPlace;
         private BigDecimal latitude;

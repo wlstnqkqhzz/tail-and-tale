@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/layout/Header";
+import RegionSelect from "../components/common/RegionSelect";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
 import { getWalkSchedules } from "../api/walk";
 import { getAccessToken } from "../utils/token";
@@ -155,7 +156,7 @@ export default function WalksPage() {
                 <section className="mx-auto max-w-7xl px-8 py-10">
                     <form
                         onSubmit={handleSearch}
-                        className="grid gap-3 border-y border-gray-200 py-5 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_auto_auto]"
+                        className="grid gap-3 border-y border-gray-200 py-5 lg:grid-cols-[1.2fr_1.4fr_0.8fr_0.8fr_auto_auto]"
                     >
                         <input
                             name="keyword"
@@ -165,12 +166,10 @@ export default function WalksPage() {
                             placeholder="제목, 설명, 장소 검색"
                         />
 
-                        <input
-                            name="region"
+                        <RegionSelect
                             value={filters.region}
-                            onChange={handleFilterChange}
-                            className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                            placeholder="지역"
+                            onChange={(region) => setFilters((prevFilters) => ({ ...prevFilters, region }))}
+                            selectClassName="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black disabled:bg-gray-50"
                         />
 
                         <select

@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
+import RegionSelect from "../components/common/RegionSelect";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
 import { updateMyProfile, getMyDashboard } from "../api/member";
 import { cancelMyWalkParticipation } from "../api/walk";
 import { getAccessToken } from "../utils/token";
+import { isCompleteRegionValue } from "../constants/regions";
 import { formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
 
 const initialForm = {
@@ -177,6 +179,11 @@ export default function MyPage() {
 
         if (!form.nickname.trim()) {
             alert("닉네임을 입력해주세요.");
+            return;
+        }
+
+        if (form.region.trim() && !isCompleteRegionValue(form.region)) {
+            alert("거주 지역은 시/도와 시/군/구를 모두 선택해주세요.");
             return;
         }
 
@@ -547,11 +554,9 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
                 </Field>
 
                 <Field label="거주 지역">
-                    <input name="region"
+                    <RegionSelect
                         value={form.region}
-                        onChange={onChange}
-                        className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                        placeholder="예: 진주"
+                        onChange={(region) => onChange({ target: { name: "region", value: region } })}
                     />
                 </Field>
 

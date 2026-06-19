@@ -82,9 +82,6 @@ export default function CommunityWritePage() {
             title: selectedReview && !prevForm.title.trim()
                 ? `${selectedReview.walkTitle} 산책 후기`
                 : prevForm.title,
-            content: selectedReview
-                ? createWalkReviewTemplate(selectedReview)
-                : prevForm.content,
         }));
     };
 
@@ -240,7 +237,7 @@ function WalkReviewSelector({ reviews, selectedReviewId, isLoading, onSelect }) 
                 <div>
                     <p className="text-sm font-bold text-gray-950">연결 산책 후기</p>
                     <p className="mt-1 text-xs text-gray-400">
-                        내가 작성한 산책 후기를 선택하면 본문 템플릿이 자동으로 채워집니다.
+                        내가 작성한 산책 후기를 선택하면 게시글에 후기 카드가 함께 표시됩니다.
                     </p>
                 </div>
                 <span className="text-xs font-bold text-gray-400">
@@ -310,20 +307,6 @@ function Field({ label, children }) {
             {children}
         </label>
     );
-}
-
-function createWalkReviewTemplate(review) {
-    return `[산책 후기 공유]
-
-산책 일정: ${review.walkTitle}
-후기 대상: ${review.revieweeNickname}
-평점: ${review.rating}점
-
-원본 후기:
-${review.content || "후기 내용이 없습니다."}
-
-추가로 공유하고 싶은 이야기:
-`;
 }
 
 function renderRating(rating) {

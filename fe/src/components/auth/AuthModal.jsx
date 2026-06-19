@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { redirectToOAuth } from "../../api/auth";
 import { login, signup } from "../../api/member";
+import RegionSelect from "../common/RegionSelect";
+import { isCompleteRegionValue } from "../../constants/regions";
 import { useModalClose } from "../../hooks/useModalClose";
 
 export default function AuthModal({ onClose }) {
@@ -94,43 +96,10 @@ export default function AuthModal({ onClose }) {
     const handleSignup = async (event) => {
         event.preventDefault();
 
-        if (!signupForm.email.trim()) {
-            alert("이메일을 입력해주세요.");
-            return;
-        }
+        const validationMessage = validateSignupForm(signupForm);
 
-        if (!signupForm.realName.trim()) {
-            alert("실명을 입력해주세요.");
-            return;
-        }
-
-        if (!signupForm.nickname.trim()) {
-            alert("닉네임을 입력해주세요.");
-            return;
-        }
-
-        if (!signupForm.phoneNumber.trim()) {
-            alert("전화번호를 입력해주세요.");
-            return;
-        }
-
-        if (!signupForm.region.trim()) {
-            alert("거주 지역을 입력해주세요.");
-            return;
-        }
-
-        if (!signupForm.introduction.trim()) {
-            alert("자기소개를 입력해주세요.");
-            return;
-        }
-
-        if (!signupForm.password.trim()) {
-            alert("비밀번호를 입력해주세요.");
-            return;
-        }
-
-        if (signupForm.password !== signupForm.passwordConfirm) {
-            alert("비밀번호가 일치하지 않습니다.");
+        if (validationMessage) {
+            alert(validationMessage);
             return;
         }
 
@@ -273,6 +242,7 @@ export default function AuthModal({ onClose }) {
                             onChange={handleSignupChange}
                             className="h-12 rounded-xl border px-4"
                             placeholder="이메일"
+                            maxLength={100}
                         />
                         <input
                             name="realName"
@@ -280,6 +250,7 @@ export default function AuthModal({ onClose }) {
                             onChange={handleSignupChange}
                             className="h-12 rounded-xl border px-4"
                             placeholder="실명"
+                            maxLength={20}
                         />
                         <input
                             name="nickname"
@@ -287,6 +258,7 @@ export default function AuthModal({ onClose }) {
                             onChange={handleSignupChange}
                             className="h-12 rounded-xl border px-4"
                             placeholder="닉네임"
+                            maxLength={12}
                         />
                         <input
                             name="phoneNumber"
@@ -294,13 +266,19 @@ export default function AuthModal({ onClose }) {
                             onChange={handleSignupChange}
                             className="h-12 rounded-xl border px-4"
                             placeholder="전화번호"
+                            maxLength={13}
                         />
                         <input
                             name="region"
                             value={signupForm.region}
-                            onChange={handleSignupChange}
-                            className="h-12 rounded-xl border px-4"
-                            placeholder="거주 지역"
+                            readOnly
+                            className="sr-only"
+                            tabIndex={-1}
+                        />
+                        <RegionSelect
+                            value={signupForm.region}
+                            onChange={(region) => setSignupForm((prevForm) => ({ ...prevForm, region }))}
+                            selectClassName="h-12 rounded-xl border px-4 text-sm outline-none transition focus:border-black disabled:bg-gray-50"
                         />
                         <textarea
                             name="introduction"
@@ -308,14 +286,16 @@ export default function AuthModal({ onClose }) {
                             onChange={handleSignupChange}
                             className="min-h-24 resize-none rounded-xl border px-4 py-3"
                             placeholder="자기소개"
+                            maxLength={200}
                         />
                         <input
                             name="password"
                             value={signupForm.password}
                             onChange={handleSignupChange}
                             className="h-12 rounded-xl border px-4"
-                            placeholder="비밀번호"
+                            placeholder="비밀번호 8~20자, 영문+숫자"
                             type="password"
+                            maxLength={20}
                         />
                         <input
                             name="passwordConfirm"
@@ -324,6 +304,7 @@ export default function AuthModal({ onClose }) {
                             className="h-12 rounded-xl border px-4"
                             placeholder="비밀번호 확인"
                             type="password"
+                            maxLength={20}
                         />
 
                         <button
@@ -350,4 +331,46 @@ export default function AuthModal({ onClose }) {
             </div>
         </div>
     );
+}
+
+function validateSignupForm(form) {
+    const email = form.email.trim();
+    const realName = form.realName.trim();
+    const nickname = form.nickname.trim();
+    const phoneNumber = form.phoneNumber.trim();
+    const region = form.region.trim();
+    const introduction = form.introduction.trim();
+    const password = form.password;
+
+    if (!email) return "이메일을 입력해주세요.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "올바른 이메일 형식으로 입력해주세요.";
+    if (email.length > 100) return "이메일은 100자 이하로 입력해주세요.";
+
+    if (!realName) return "실명을 입력해주세요.";
+    if (realName.length < 2 || realName.length > 20) return "실명은 2자 이상 20자 이하로 입력해주세요.";
+    if (!/^[가-힣a-zA-Z\s]+$/.test(realName)) return "실명은 한글 또는 영문으로 입력해주세요.";
+
+    if (!nickname) return "닉네임을 입력해주세요.";
+    if (nickname.length < 2 || nickname.length > 12) return "닉네임은 2자 이상 12자 이하로 입력해주세요.";
+    if (!/^[가-힣a-zA-Z0-9]+$/.test(nickname)) return "닉네임은 한글, 영문, 숫자만 사용할 수 있습니다.";
+
+    if (!phoneNumber) return "전화번호를 입력해주세요.";
+    if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phoneNumber)) return "전화번호 형식이 올바르지 않습니다.";
+
+    if (!region) return "거주 지역을 입력해주세요.";
+    if (!isCompleteRegionValue(region)) return "거주 지역은 시/도와 시/군/구를 모두 선택해주세요.";
+    if (region.length < 2 || region.length > 30) return "거주 지역은 2자 이상 30자 이하로 입력해주세요.";
+
+    if (!introduction) return "자기소개를 입력해주세요.";
+    if (introduction.length < 5 || introduction.length > 200) return "자기소개는 5자 이상 200자 이하로 입력해주세요.";
+
+    if (!password.trim()) return "비밀번호를 입력해주세요.";
+    if (password.length < 8 || password.length > 20) return "비밀번호는 8자 이상 20자 이하로 입력해주세요.";
+    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,20}$/.test(password)) {
+        return "비밀번호는 영문과 숫자를 포함해야 합니다.";
+    }
+
+    if (password !== form.passwordConfirm) return "비밀번호가 일치하지 않습니다.";
+
+    return "";
 }

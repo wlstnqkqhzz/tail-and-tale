@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
+import RegionSelect from "../components/common/RegionSelect";
 import { completeProfile, getMyInfo } from "../api/member";
 import { getAccessToken } from "../utils/token";
+import { isCompleteRegionValue } from "../constants/regions";
 
 const initialForm = {
     realName: "",
@@ -90,6 +92,11 @@ export default function OAuth2ProfileCompletePage() {
             return;
         }
 
+        if (!isCompleteRegionValue(form.region)) {
+            alert("거주 지역은 시/도와 시/군/구를 모두 선택해주세요.");
+            return;
+        }
+
         try {
             setIsSubmitting(true);
 
@@ -170,11 +177,9 @@ export default function OAuth2ProfileCompletePage() {
                                 </Field>
 
                                 <Field label="거주 지역" required>
-                                    <input name="region"
+                                    <RegionSelect
                                         value={form.region}
-                                        onChange={handleChange}
-                                        className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                                        placeholder="예: 진주"
+                                        onChange={(region) => setForm((prevForm) => ({ ...prevForm, region }))}
                                     />
                                 </Field>
 

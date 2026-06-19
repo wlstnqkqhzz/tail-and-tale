@@ -141,8 +141,19 @@ public class AiAnalysisService {
 
     // 내 반려견 Entity 조회
     private Dog getMyDog(Long memberId, Long dogId) {
-        return dogRepository.findByIdAndMemberId(dogId, memberId)
+        Dog dog = dogRepository.findByIdAndMemberId(dogId, memberId)
                 .orElseThrow(() -> new CustomException(DogErrorCode.DOG_NOT_FOUND));
+
+        validateVerifiedDog(dog);
+
+        return dog;
+    }
+
+    // 반려견 인증 여부 검증
+    private void validateVerifiedDog(Dog dog) {
+        if (!Boolean.TRUE.equals(dog.getIsVerified())) {
+            throw new CustomException(DogErrorCode.DOG_NOT_VERIFIED);
+        }
     }
 
     // Gemini 분석 생성 및 fallback 처리

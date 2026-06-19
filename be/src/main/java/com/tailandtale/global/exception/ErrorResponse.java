@@ -26,4 +26,13 @@ public class ErrorResponse {
                 .message(errorCode.getMessage())
                 .build();
     }
+
+    // ErrorResponse 직접 생성
+    public static ErrorResponse of(int status, String error, String message) {
+        return ErrorResponse.builder()
+                .status(status)
+                .error(error)
+                .message(message)
+                .build();
+    }
 }
