@@ -21,6 +21,7 @@ import {
     updateWalkRecord,
 } from "../api/care";
 import { getDogs } from "../api/dog";
+import { getConditionIcon, getConditionLabel } from "../constants/conditionIcons";
 import { getAccessToken } from "../utils/token";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -77,11 +78,11 @@ const quickSteps = [
 ];
 
 const quickEmotionOptions = [
-    { value: "SAD", icon: "😞", label: "슬픔", conditionLevel: "1" },
-    { value: "UNKNOWN", icon: "😐", label: "보통", conditionLevel: "2" },
-    { value: "CALM", icon: "🙂", label: "평온함", conditionLevel: "3" },
-    { value: "HAPPY", icon: "😄", label: "좋음", conditionLevel: "4" },
-    { value: "EXCITED", icon: "😍", label: "신남", conditionLevel: "5" },
+    { value: "SAD", label: "슬픔", conditionLevel: "1" },
+    { value: "UNKNOWN", label: "보통", conditionLevel: "2" },
+    { value: "CALM", label: "평온함", conditionLevel: "3" },
+    { value: "HAPPY", label: "좋음", conditionLevel: "4" },
+    { value: "EXCITED", label: "신남", conditionLevel: "5" },
 ];
 
 const emotionLabels = {
@@ -122,25 +123,6 @@ const riskLabels = {
     LOW: "낮음",
     MEDIUM: "보통",
     HIGH: "높음",
-};
-
-const conditionEmojiByLevel = {
-    1: "😞",
-    2: "😐",
-    3: "🙂",
-    4: "😄",
-    5: "😍",
-};
-
-const emotionEmojiByValue = {
-    SAD: "😞",
-    ANGRY: "😠",
-    ANXIOUS: "😟",
-    TIRED: "😴",
-    UNKNOWN: "😐",
-    CALM: "🙂",
-    HAPPY: "😄",
-    EXCITED: "😍",
 };
 
 const tabs = [
@@ -1221,14 +1203,19 @@ function ReviewStat({ label, value }) {
 
 function ReviewDayCell({ date, diary, health, walkCount }) {
     const conditionLevel = diary?.conditionLevel ? Number(diary.conditionLevel) : null;
-    const emoji = getConditionEmoji(diary);
+    const conditionIcon = diary ? getConditionIcon(conditionLevel) : null;
+    const conditionLabel = conditionLevel ? getConditionLabel(conditionLevel) : emotionLabels[diary?.emotion];
     const day = Number(date.slice(8, 10));
 
     return (
         <div className="min-h-28 border-b border-r border-gray-200 p-3">
             <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-bold text-gray-950">{day}</span>
-                <span className="text-2xl leading-none">{emoji}</span>
+                {conditionIcon ? (
+                    <img src={conditionIcon} alt={conditionLabel} className="h-9 w-9 object-contain" />
+                ) : (
+                    <span className="text-2xl leading-none text-gray-950">·</span>
+                )}
             </div>
             <div className="mt-3 grid gap-1 text-xs text-gray-400">
                 {diary ? (
@@ -1390,11 +1377,15 @@ function QuickRecordModal({
                                                 onClick={() => onEmotionSelect(option)}
                                                 className={`grid h-24 place-items-center border text-center transition ${
                                                     active
-                                                        ? "border-black bg-black text-white"
+                                                        ? "border-black bg-gray-50 text-gray-950"
                                                         : "border-gray-200 text-gray-700 hover:border-gray-400"
                                                 }`}
                                             >
-                                                <span className="text-3xl">{option.icon}</span>
+                                                <img
+                                                    src={getConditionIcon(option.conditionLevel)}
+                                                    alt={getConditionLabel(option.conditionLevel)}
+                                                    className="h-11 w-11 object-contain"
+                                                />
                                                 <span className="text-xs font-bold">{option.label}</span>
                                             </button>
                                         );
@@ -1644,6 +1635,8 @@ function EmotionSection({ form, walkRecords, diaries, isSubmitting, isEditing, o
                         title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
                         meta={`${diary.recordedDate} · ${diary.dogName}`}
                         content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
+                        icon={getConditionIcon(diary.conditionLevel)}
+                        iconAlt={getConditionLabel(diary.conditionLevel)}
                         onEdit={() => onEdit(diary)}
                         onDelete={() => onDelete(diary.emotionDiaryId)}
                     />
@@ -1795,13 +1788,16 @@ function RecordList({ emptyText, children }) {
     return <div className="grid gap-3">{children}</div>;
 }
 
-function RecordCard({ title, meta, content, onEdit, onDelete }) {
+function RecordCard({ title, meta, content, icon, iconAlt, onEdit, onDelete }) {
     return (
         <div className="grid gap-4 border border-gray-200 p-5 md:grid-cols-[1fr_auto]">
-            <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-400">{meta}</p>
-                <h3 className="mt-2 text-lg font-bold text-gray-950">{title}</h3>
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">{content}</p>
+            <div className="flex min-w-0 gap-4">
+                {icon && <img src={icon} alt={iconAlt || ""} className="mt-1 h-11 w-11 shrink-0 object-contain" />}
+                <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-400">{meta}</p>
+                    <h3 className="mt-2 text-lg font-bold text-gray-950">{title}</h3>
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">{content}</p>
+                </div>
             </div>
             <div className="grid grid-cols-2 gap-2 md:w-36 md:self-start">
                 <button type="button" onClick={onEdit} className="h-10 border border-gray-200 text-sm font-bold transition hover:bg-gray-50">
@@ -1958,16 +1954,6 @@ function getSelectedMonthWeekNumber(anchorDate, weekOptions) {
     return weekOptions.find((option) => (
         anchorDate >= option.startDate && anchorDate <= option.endDate
     ))?.weekNumber || weekOptions[0]?.weekNumber || 1;
-}
-
-function getConditionEmoji(diary) {
-    if (!diary) {
-        return "·";
-    }
-
-    const conditionLevel = diary.conditionLevel ? Number(diary.conditionLevel) : null;
-
-    return conditionEmojiByLevel[conditionLevel] || emotionEmojiByValue[diary.emotion] || "🙂";
 }
 
 function getReviewStats(days, diariesByDate, walksByDate) {
