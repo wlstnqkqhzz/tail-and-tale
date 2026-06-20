@@ -45,16 +45,16 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
         try {
             String responseText = extractResponseText(responseBody);
-            JsonNode analysisNode = objectMapper.readTree(cleanJson(responseText));
+            String markdownReport = cleanMarkdown(responseText);
 
             return new AiGeneratedAnalysis(
-                    limit(analysisNode.path("summary").asText(), 500),
-                    defaultText(analysisNode.path("resultContent").asText(), "AI 분석 결과를 생성하지 못했습니다."),
-                    parseRiskLevel(analysisNode.path("riskLevel").asText()),
-                    defaultText(analysisNode.path("guideContent").asText(), "기록을 꾸준히 남기며 변화를 관찰해주세요.")
+                    createSummary(markdownReport),
+                    defaultText(markdownReport, "AI 분석 결과를 생성하지 못했습니다."),
+                    RiskLevel.LOW,
+                    null
             );
         } catch (Exception e) {
-            throw new IllegalStateException("Gemini 분석 JSON을 해석하지 못했습니다.", e);
+            throw new IllegalStateException("Gemini 분석 응답을 해석하지 못했습니다.", e);
         }
     }
 
@@ -84,8 +84,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                         )
                 ),
                 "generationConfig", Map.of(
-                        "temperature", 0.3,
-                        "responseMimeType", "application/json"
+                        "temperature", 0.3
                 )
         );
     }
@@ -118,40 +117,25 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         }
     }
 
-    // JSON 코드블록 제거
-    private String cleanJson(String text) {
+    // Markdown 코드블록 제거
+    private String cleanMarkdown(String text) {
         return text
-                .replaceFirst("^```json\\s*", "")
+                .replaceFirst("^```markdown\\s*", "")
                 .replaceFirst("^```\\s*", "")
                 .replaceFirst("\\s*```$", "")
                 .trim();
-    }
-
-    // 위험도 변환
-    private RiskLevel parseRiskLevel(String value) {
-        if (!StringUtils.hasText(value)) {
-            return RiskLevel.LOW;
-        }
-
-        try {
-            return RiskLevel.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return RiskLevel.LOW;
-        }
     }
 
     private String defaultText(String value, String fallback) {
         return StringUtils.hasText(value) ? value : fallback;
     }
 
-    private String limit(String value, int maxLength) {
-        String target = defaultText(value, "AI 분석 결과를 생성했습니다.");
-
-        if (target.length() <= maxLength) {
-            return target;
+    private String createSummary(String markdownReport) {
+        if (!StringUtils.hasText(markdownReport)) {
+            return "AI 결산 리포트가 생성되었습니다.";
         }
 
-        return target.substring(0, maxLength);
+        return "AI가 선택한 기간의 케어 결산을 작성했습니다.";
     }
 
     private String normalizeModel(String model) {

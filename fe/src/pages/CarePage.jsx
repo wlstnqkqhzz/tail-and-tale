@@ -1027,6 +1027,9 @@ function ReviewSection({
     const selectedWeekNumber = getSelectedMonthWeekNumber(anchorDate, weekOptions);
     const stats = getReviewStats(days, diariesByDate, walksByDate);
     const leadingBlankCount = getMondayBasedWeekday(range.startDate);
+    const loadingTitle = mode === "week"
+        ? "AI가 이번 주 기록을 분석하고 있어요..."
+        : "AI가 이번 달 기록을 분석하고 있어요...";
 
     const handleMonthChange = (event) => {
         const nextMonthValue = event.target.value;
@@ -1168,26 +1171,42 @@ function ReviewSection({
                     <span className="text-sm font-bold text-gray-400">{periodAnalyses.length}건</span>
                 </div>
 
-                <RecordList emptyText="아직 이 기간의 결산 리뷰가 없습니다.">
-                    {periodAnalyses.map((analysis) => (
-                        <div key={analysis.aiAnalysisResultId} className="border border-gray-200 p-5">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
-                                    {analysis.targetStartDate} ~ {analysis.targetEndDate}
-                                </span>
-                                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600">
-                                    위험도 {riskLabels[analysis.riskLevel]}
-                                </span>
+                {isSubmitting ? (
+                    <ReviewLoadingState title={loadingTitle} />
+                ) : (
+                    <RecordList emptyText="아직 이 기간의 결산 리뷰가 없습니다.">
+                        {periodAnalyses.map((analysis) => (
+                            <div key={analysis.aiAnalysisResultId} className="border border-gray-200 p-5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
+                                        {analysis.targetStartDate} ~ {analysis.targetEndDate}
+                                    </span>
+                                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600">
+                                        위험도 {riskLabels[analysis.riskLevel]}
+                                    </span>
+                                </div>
+                                <h4 className="mt-4 text-lg font-bold text-gray-950">{analysis.summary}</h4>
+                                <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-500">{analysis.resultContent}</p>
+                                {analysis.guideContent && (
+                                    <p className="mt-3 whitespace-pre-line border-t border-gray-100 pt-3 text-sm leading-6 text-gray-700">
+                                        {analysis.guideContent}
+                                    </p>
+                                )}
                             </div>
-                            <h4 className="mt-4 text-lg font-bold text-gray-950">{analysis.summary}</h4>
-                            <p className="mt-3 text-sm leading-6 text-gray-500">{analysis.resultContent}</p>
-                            <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-6 text-gray-700">
-                                {analysis.guideContent}
-                            </p>
-                        </div>
-                    ))}
-                </RecordList>
+                        ))}
+                    </RecordList>
+                )}
             </section>
+        </div>
+    );
+}
+
+function ReviewLoadingState({ title }) {
+    return (
+        <div className="flex h-64 flex-col items-center justify-center border border-dashed border-gray-200 bg-white text-center">
+            <div className="h-9 w-9 animate-spin rounded-full border-4 border-gray-100 border-t-violet-500" />
+            <p className="mt-5 text-lg font-bold text-gray-800">{title}</p>
+            <p className="mt-2 text-sm font-bold text-gray-400">잠시만 기다려주세요.</p>
         </div>
     );
 }
@@ -1732,10 +1751,12 @@ function AnalysisSection({ analysisType, analyses, isSubmitting, onTypeChange, o
                             </span>
                         </div>
                         <h3 className="mt-4 text-lg font-bold text-gray-950">{analysis.summary}</h3>
-                        <p className="mt-3 text-sm leading-6 text-gray-500">{analysis.resultContent}</p>
-                        <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-6 text-gray-700">
-                            {analysis.guideContent}
-                        </p>
+                        <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-500">{analysis.resultContent}</p>
+                        {analysis.guideContent && (
+                            <p className="mt-3 whitespace-pre-line border-t border-gray-100 pt-3 text-sm leading-6 text-gray-700">
+                                {analysis.guideContent}
+                            </p>
+                        )}
                     </div>
                 ))}
             </RecordList>

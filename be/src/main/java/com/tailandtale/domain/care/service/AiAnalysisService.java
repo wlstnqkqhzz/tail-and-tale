@@ -15,16 +15,19 @@ import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
 import com.tailandtale.global.exception.MemberErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 // AI 분석 Service
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class AiAnalysisService {
     private final AiAnalysisResultRepository aiAnalysisResultRepository;
@@ -66,6 +69,7 @@ public class AiAnalysisService {
         List<WalkRecordDto.Response> recentWalkRecords = walkRecordService.getMyWalkRecords(memberId, dog.getId());
         List<EmotionDiaryDto.Response> recentEmotionDiaries = emotionDiaryService.getMyEmotionDiaries(memberId, dog.getId());
         List<HealthRecordDto.Response> recentHealthRecords = healthRecordService.getMyHealthRecords(memberId, dog.getId());
+        RiskLevel riskLevel = determineRiskLevel(emotionSummary, healthSummary, walkSummary);
 
         AiGeneratedAnalysis generatedAnalysis = generateAnalysisWithFallback(
                 dog,
@@ -88,8 +92,16 @@ public class AiAnalysisService {
                 endDate,
                 generatedAnalysis.summary(),
                 generatedAnalysis.resultContent(),
-                generatedAnalysis.riskLevel(),
+                riskLevel,
                 generatedAnalysis.guideContent()
+        );
+
+        aiAnalysisResultRepository.deleteAllByDog_IdAndMember_IdAndAnalysisTypeAndTargetStartDateAndTargetEndDate(
+                dog.getId(),
+                memberId,
+                request.getAnalysisType(),
+                startDate,
+                endDate
         );
 
         return AiAnalysisDto.Response.from(aiAnalysisResultRepository.save(aiAnalysisResult));
@@ -185,9 +197,13 @@ public class AiAnalysisService {
 
             return aiAnalysisClient.analyze(prompt);
         } catch (Exception e) {
+            log.warn("Gemini analysis failed. fallback analysis will be used. dogId={}, analysisType={}, startDate={}, endDate={}",
+                    dog.getId(), analysisType, startDate, endDate, e);
             return generateFallbackAnalysis(
                     dog,
                     analysisType,
+                    startDate,
+                    endDate,
                     emotionSummary,
                     healthSummary,
                     walkSummary
@@ -199,16 +215,24 @@ public class AiAnalysisService {
     private AiGeneratedAnalysis generateFallbackAnalysis(
             Dog dog,
             AnalysisType analysisType,
+            LocalDate startDate,
+            LocalDate endDate,
             EmotionDiaryDto.SummaryResponse emotionSummary,
             HealthRecordDto.SummaryResponse healthSummary,
             WalkRecordDto.SummaryResponse walkSummary
     ) {
         RiskLevel riskLevel = determineRiskLevel(emotionSummary, healthSummary, walkSummary);
-        String summary = createSummary(dog, analysisType, emotionSummary, healthSummary, walkSummary, riskLevel);
+        String reportType = getReportType(startDate, endDate);
+        String summary = createSummary(dog, analysisType, reportType, emotionSummary, healthSummary, walkSummary, riskLevel);
         String resultContent = createResultContent(emotionSummary, healthSummary, walkSummary);
         String guideContent = createGuideContent(riskLevel, emotionSummary, healthSummary, walkSummary);
 
-        return new AiGeneratedAnalysis(summary, resultContent, riskLevel, guideContent);
+        return new AiGeneratedAnalysis(
+                summary,
+                createReviewReport(reportType, emotionSummary, healthSummary, walkSummary, riskLevel, resultContent, guideContent),
+                riskLevel,
+                guideContent
+        );
     }
 
     // 위험도 계산
@@ -239,6 +263,7 @@ public class AiAnalysisService {
     private String createSummary(
             Dog dog,
             AnalysisType analysisType,
+            String reportType,
             EmotionDiaryDto.SummaryResponse emotionSummary,
             HealthRecordDto.SummaryResponse healthSummary,
             WalkRecordDto.SummaryResponse walkSummary,
@@ -248,7 +273,7 @@ public class AiAnalysisService {
             case EMOTION_PATTERN -> dog.getName() + "의 최근 감정 흐름은 "
                     + getEmotionText(emotionSummary.getMostFrequentEmotion()) + " 중심이며 위험도는 " + getRiskText(riskLevel) + "입니다.";
             case HEALTH_RISK -> dog.getName() + "의 건강 기록 기준 위험도는 " + getRiskText(riskLevel) + "입니다.";
-            case CARE_GUIDE -> dog.getName() + "에게 필요한 관리 가이드를 생성했습니다.";
+            case CARE_GUIDE -> dog.getName() + " " + reportType + " 결산 리포트가 생성되었습니다.";
             case WALK_ACTIVITY -> dog.getName() + "의 최근 산책은 총 " + walkSummary.getTotalCount()
                     + "회, " + walkSummary.getTotalDistanceKm() + "km 기록되었습니다.";
         };
@@ -284,6 +309,66 @@ public class AiAnalysisService {
             return "관찰이 필요한 변화가 있습니다. 산책 시간과 거리, 식욕, 수면, 산책 후 피로도를 며칠 더 기록해보세요.";
         }
         return "현재 기록상 큰 이상 신호는 낮습니다. 지금처럼 산책, 감정, 건강 기록을 꾸준히 남겨주세요.";
+    }
+
+    // 결산 리포트 형식 생성
+    private String createReviewReport(
+            String reportType,
+            EmotionDiaryDto.SummaryResponse emotionSummary,
+            HealthRecordDto.SummaryResponse healthSummary,
+            WalkRecordDto.SummaryResponse walkSummary,
+            RiskLevel riskLevel,
+            String resultContent,
+            String guideContent
+    ) {
+        String conditionText = emotionSummary.getAverageConditionLevel() == null
+                ? "아직 평균 컨디션을 판단할 기록이 충분하지 않습니다."
+                : String.format("평균 컨디션은 %.1f점입니다.", emotionSummary.getAverageConditionLevel());
+        String walkText = walkSummary.getTotalCount() == null || walkSummary.getTotalCount() == 0
+                ? "산책 기록은 아직 없습니다."
+                : "산책 기록은 " + walkSummary.getTotalCount() + "건, 총 "
+                + (walkSummary.getTotalDurationMinutes() == null ? 0 : walkSummary.getTotalDurationMinutes()) + "분입니다.";
+        String healthText = healthSummary.getBadCount() != null && healthSummary.getBadCount() > 0
+                ? "나쁨으로 기록된 건강 체크가 있어 상태 변화를 천천히 살펴봐주세요."
+                : "건강 기록상 큰 이상 신호는 낮습니다.";
+
+        return """
+                1. %s 컨디션 요약
+                %s %s
+
+                2. 주목할 만한 패턴
+                %s
+
+                3. 좋아하는 활동 추정
+                데이터에 명확히 드러난 활동만 보면 산책 후 상태와 메모를 계속 비교해보는 것이 좋습니다.
+
+                4. 관찰 포인트
+                %s 위험도는 %s입니다.
+
+                5. 다음 %s 케어 가이드
+                %s
+
+                6. 보호자에게 한마디
+                지금처럼 짧게라도 꾸준히 기록해주면 다음 결산이 더 정확해집니다.
+                """.formatted(
+                reportType,
+                conditionText,
+                walkText,
+                resultContent,
+                healthText,
+                getRiskText(riskLevel),
+                reportType,
+                guideContent
+        ).trim();
+    }
+
+    // 결산 단위 계산
+    private String getReportType(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            return "주간";
+        }
+        long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        return days >= 28 ? "월간" : "주간";
     }
 
     private String getEmotionText(DogEmotion emotion) {

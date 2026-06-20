@@ -163,4 +163,9 @@ public class Member extends BaseEntity {
     public void deactivate() {
         this.status = MemberStatus.INACTIVE;
     }
+
+    // 관리자 회원 상태 변경
+    public void changeStatus(MemberStatus status) {
+        this.status = status;
+    }
 }

@@ -182,6 +182,14 @@ export default function Header({ onLoginClick }) {
                             isActive={location.pathname.startsWith("/care")}
                             onClick={movePage}
                         />
+                        {member?.role === "ADMIN" && (
+                            <HeaderNavButton
+                                label="관리자"
+                                path="/admin"
+                                isActive={location.pathname.startsWith("/admin")}
+                                onClick={movePage}
+                            />
+                        )}
                     </nav>
                 </div>
 
@@ -268,6 +276,15 @@ export default function Header({ onLoginClick }) {
                                         >
                                             케어 기록
                                         </button>
+
+                                        {member?.role === "ADMIN" && (
+                                            <button
+                                                onClick={() => movePage("/admin")}
+                                                className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
+                                            >
+                                                관리자
+                                            </button>
+                                        )}
 
                                         <div className="h-px bg-gray-100" />
 
