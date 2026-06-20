@@ -23,6 +23,7 @@ import {
 import { getDogs } from "../api/dog";
 import { getConditionIcon, getConditionLabel } from "../constants/conditionIcons";
 import { getAccessToken } from "../utils/token";
+import ReactMarkdown from "react-markdown";
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -1186,11 +1187,18 @@ function ReviewSection({
                                     </span>
                                 </div>
                                 <h4 className="mt-4 text-lg font-bold text-gray-950">{analysis.summary}</h4>
-                                <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-500">{analysis.resultContent}</p>
+                                <div className="prose prose-sm max-w-none mt-4">
+                                    <ReactMarkdown>
+                                        {analysis.resultContent}
+                                    </ReactMarkdown>
+                                </div>
+
                                 {analysis.guideContent && (
-                                    <p className="mt-3 whitespace-pre-line border-t border-gray-100 pt-3 text-sm leading-6 text-gray-700">
-                                        {analysis.guideContent}
-                                    </p>
+                                    <div className="prose prose-sm max-w-none mt-4 border-t border-gray-100 pt-4">
+                                        <ReactMarkdown>
+                                            {analysis.guideContent}
+                                        </ReactMarkdown>
+                                    </div>
                                 )}
                             </div>
                         ))}
