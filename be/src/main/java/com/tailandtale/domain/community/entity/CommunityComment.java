@@ -40,6 +40,10 @@ public class CommunityComment extends BaseEntity {
     @Column(nullable = false, length = 1000)
     private String content;
 
+    // 삭제 여부
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     private CommunityComment(
             CommunityPost communityPost,
             Member member,
@@ -70,6 +74,11 @@ public class CommunityComment extends BaseEntity {
     // 댓글 수정
     public void update(String content) {
         this.content = content;
+    }
+
+    // 댓글 삭제 처리
+    public void delete() {
+        this.isDeleted = true;
     }
 
     // 작성자 여부 확인

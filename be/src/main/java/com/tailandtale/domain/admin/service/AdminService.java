@@ -23,8 +23,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 // Admin service
 
 @Service
@@ -162,13 +160,11 @@ public class AdminService {
 
         CommunityComment comment = communityCommentRepository.findById(commentId)
                 .orElseThrow(() -> new CustomException(CommunityErrorCode.COMMUNITY_COMMENT_NOT_FOUND));
-        List<CommunityComment> childComments = communityCommentRepository.findAllByParentCommentId(commentId);
 
-        childComments.forEach(childComment -> comment.getCommunityPost().decreaseCommentCount());
-        comment.getCommunityPost().decreaseCommentCount();
-
-        communityCommentRepository.deleteAll(childComments);
-        communityCommentRepository.delete(comment);
+        if (!Boolean.TRUE.equals(comment.getIsDeleted())) {
+            comment.delete();
+            comment.getCommunityPost().decreaseCommentCount();
+        }
     }
 
     private Member validateAdmin(Long adminMemberId) {

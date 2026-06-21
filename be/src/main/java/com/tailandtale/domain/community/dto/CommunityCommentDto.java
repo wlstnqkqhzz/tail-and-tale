@@ -50,11 +50,14 @@ public class CommunityCommentDto {
         private String profileImageUrl;
         private Long parentCommentId;
         private String content;
+        private Boolean isDeleted;
         private Boolean isWriter;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
         public static Response from(CommunityComment comment, Long loginMemberId) {
+            boolean deleted = Boolean.TRUE.equals(comment.getIsDeleted());
+
             return Response.builder()
                     .commentId(comment.getId())
                     .communityPostId(comment.getCommunityPost().getId())
@@ -63,8 +66,9 @@ public class CommunityCommentDto {
                     .nickname(comment.getMember().getNickname())
                     .profileImageUrl(comment.getMember().getProfileImageUrl())
                     .parentCommentId(comment.getParentComment() == null ? null : comment.getParentComment().getId())
-                    .content(comment.getContent())
-                    .isWriter(comment.isWriter(loginMemberId))
+                    .content(deleted ? "삭제된 댓글입니다." : comment.getContent())
+                    .isDeleted(deleted)
+                    .isWriter(!deleted && comment.isWriter(loginMemberId))
                     .createdAt(comment.getCreatedAt())
                     .updatedAt(comment.getUpdatedAt())
                     .build();

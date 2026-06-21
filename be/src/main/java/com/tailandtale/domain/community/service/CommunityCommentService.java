@@ -81,6 +81,7 @@ public class CommunityCommentService {
         CommunityComment comment = findComment(commentId, communityPostId);
 
         validateWriter(comment, memberId);
+        validateNotDeleted(comment);
 
         comment.update(request.getContent().trim());
 
@@ -94,8 +95,10 @@ public class CommunityCommentService {
 
         validateWriter(comment, memberId);
 
-        comment.getCommunityPost().decreaseCommentCount();
-        communityCommentRepository.delete(comment);
+        if (!Boolean.TRUE.equals(comment.getIsDeleted())) {
+            comment.delete();
+            comment.getCommunityPost().decreaseCommentCount();
+        }
     }
 
     // 회원 조회
@@ -118,9 +121,7 @@ public class CommunityCommentService {
 
         CommunityComment parentComment = findComment(parentCommentId, communityPostId);
 
-        if (parentComment.getParentComment() != null) {
-            throw new CustomException(CommunityErrorCode.COMMUNITY_COMMENT_PARENT_INVALID);
-        }
+        validateNotDeleted(parentComment);
 
         return parentComment;
     }
@@ -135,6 +136,13 @@ public class CommunityCommentService {
     private void validateWriter(CommunityComment comment, Long memberId) {
         if (!comment.isWriter(memberId)) {
             throw new CustomException(CommunityErrorCode.COMMUNITY_COMMENT_ACCESS_DENIED);
+        }
+    }
+
+    // 삭제된 댓글 여부 검증
+    private void validateNotDeleted(CommunityComment comment) {
+        if (Boolean.TRUE.equals(comment.getIsDeleted())) {
+            throw new CustomException(CommunityErrorCode.COMMUNITY_COMMENT_NOT_FOUND);
         }
     }
 }

@@ -1,6 +1,6 @@
 // 커뮤니티 게시글 상세 페이지
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import {
@@ -29,11 +29,14 @@ export default function CommunityDetailPage() {
     const [post, setPost] = useState(null);
     const [comments, setComments] = useState([]);
     const [commentContent, setCommentContent] = useState("");
+    const [replyingCommentId, setReplyingCommentId] = useState(null);
+    const [replyContent, setReplyContent] = useState("");
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingContent, setEditingContent] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+    const commentTree = useMemo(() => buildCommentTree(comments), [comments]);
 
     // 게시글 상세 조회
     const fetchPost = useCallback(async () => {
@@ -124,6 +127,8 @@ export default function CommunityDetailPage() {
             });
 
             setCommentContent("");
+            setReplyingCommentId(null);
+            setReplyContent("");
             await Promise.all([
                 fetchPost(),
                 fetchComments(),
@@ -136,10 +141,49 @@ export default function CommunityDetailPage() {
         }
     };
 
+    // 답글 작성 시작
+    const handleStartReply = (comment) => {
+        setReplyingCommentId(comment.commentId);
+        setReplyContent("");
+        setEditingCommentId(null);
+        setEditingContent("");
+    };
+
+    // 답글 작성
+    const handleCreateReply = async (parentCommentId) => {
+        if (!replyContent.trim()) {
+            alert("답글 내용을 입력해주세요.");
+            return;
+        }
+
+        try {
+            setIsCommentSubmitting(true);
+
+            await createCommunityComment(communityPostId, {
+                parentCommentId,
+                content: replyContent.trim(),
+            });
+
+            setReplyingCommentId(null);
+            setReplyContent("");
+            await Promise.all([
+                fetchPost(),
+                fetchComments(),
+            ]);
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "답글 작성에 실패했습니다.");
+        } finally {
+            setIsCommentSubmitting(false);
+        }
+    };
+
     // 댓글 수정 시작
     const handleStartEditComment = (comment) => {
         setEditingCommentId(comment.commentId);
         setEditingContent(comment.content);
+        setReplyingCommentId(null);
+        setReplyContent("");
     };
 
     // 댓글 수정
@@ -278,7 +322,7 @@ export default function CommunityDetailPage() {
                         <section className="mt-12 border-t border-gray-200 pt-8">
                             <div className="mb-5 flex items-center justify-between">
                                 <h2 className="text-2xl font-bold text-gray-950">댓글</h2>
-                                <span className="text-sm font-bold text-gray-400">{comments.length}건</span>
+                                <span className="text-sm font-bold text-gray-400">{post.commentCount}건</span>
                             </div>
 
                             <form onSubmit={handleCreateComment} className="mb-8 grid gap-3">
@@ -307,20 +351,31 @@ export default function CommunityDetailPage() {
                                 </div>
                             ) : (
                                 <div className="grid gap-3">
-                                    {comments.map((comment) => (
+                                    {commentTree.map((comment) => (
                                         <CommentRow
                                             key={comment.commentId}
                                             comment={comment}
-                                            editing={editingCommentId === comment.commentId}
+                                            depth={0}
+                                            replyingCommentId={replyingCommentId}
+                                            replyContent={replyContent}
+                                            editingCommentId={editingCommentId}
                                             editingContent={editingContent}
+                                            isSubmitting={isCommentSubmitting}
+                                            onStartReply={handleStartReply}
+                                            onChangeReplyContent={setReplyContent}
+                                            onCancelReply={() => {
+                                                setReplyingCommentId(null);
+                                                setReplyContent("");
+                                            }}
+                                            onSubmitReply={handleCreateReply}
                                             onChangeEditingContent={setEditingContent}
-                                            onStartEdit={() => handleStartEditComment(comment)}
+                                            onStartEdit={handleStartEditComment}
                                             onCancelEdit={() => {
                                                 setEditingCommentId(null);
                                                 setEditingContent("");
                                             }}
-                                            onUpdate={() => handleUpdateComment(comment.commentId)}
-                                            onDelete={() => handleDeleteComment(comment.commentId)}
+                                            onUpdate={handleUpdateComment}
+                                            onDelete={handleDeleteComment}
                                         />
                                     ))}
                                 </div>
@@ -373,75 +428,193 @@ function InfoItem({ label, value }) {
 
 function CommentRow({
     comment,
-    editing,
+    depth = 0,
+    replyingCommentId,
+    replyContent,
+    editingCommentId,
     editingContent,
+    isSubmitting,
+    onStartReply,
+    onChangeReplyContent,
+    onCancelReply,
+    onSubmitReply,
     onChangeEditingContent,
     onStartEdit,
     onCancelEdit,
     onUpdate,
     onDelete,
 }) {
-    return (
-        <div className="border border-gray-200 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <p className="font-bold text-gray-950">{comment.nickname}</p>
-                    <p className="mt-1 text-xs text-gray-400">{formatDateTime(comment.createdAt)}</p>
-                </div>
+    const replyOpen = replyingCommentId === comment.commentId;
+    const editing = editingCommentId === comment.commentId;
+    const indent = Math.min(depth, 4) * 24;
 
-                {comment.isWriter && !editing && (
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={onStartEdit}
-                            className="text-sm font-bold text-gray-500 hover:text-black"
-                        >
-                            수정
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onDelete}
-                            className="text-sm font-bold text-red-500 hover:text-red-600"
-                        >
-                            삭제
-                        </button>
-                    </div>
+    return (
+        <div style={{ marginLeft: indent }} className={depth > 0 ? "relative" : ""}>
+            <div className="flex items-start gap-2">
+                {depth > 0 && (
+                    <span className="mt-5 shrink-0 text-2xl font-bold leading-none text-gray-300" aria-hidden="true">
+                        ↪
+                    </span>
                 )}
+
+                <div className={`min-w-0 flex-1 border border-gray-200 p-5 ${comment.isDeleted ? "bg-gray-50" : "bg-white"}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p className={`font-bold ${comment.isDeleted ? "text-gray-400" : "text-gray-950"}`}>
+                                {comment.nickname}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400">{formatDateTime(comment.createdAt)}</p>
+                        </div>
+
+                        {!comment.isDeleted && !editing && (
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => onStartReply(comment)}
+                                    className="text-sm font-bold text-gray-500 hover:text-black"
+                                >
+                                    답글
+                                </button>
+                                {comment.isWriter && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => onStartEdit(comment)}
+                                            className="text-sm font-bold text-gray-500 hover:text-black"
+                                        >
+                                            수정
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => onDelete(comment.commentId)}
+                                            className="text-sm font-bold text-red-500 hover:text-red-600"
+                                        >
+                                            삭제
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {editing ? (
+                        <div className="mt-4 grid gap-3">
+                            <textarea
+                                value={editingContent}
+                                onChange={(event) => onChangeEditingContent(event.target.value)}
+                                className="min-h-24 resize-none border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-black"
+                                maxLength={1000}
+                            />
+
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={onCancelEdit}
+                                    className="h-9 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onUpdate(comment.commentId)}
+                                    className="h-9 bg-black px-4 text-sm font-bold text-white transition hover:opacity-80"
+                                >
+                                    저장
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className={`mt-4 whitespace-pre-wrap text-sm leading-7 ${
+                            comment.isDeleted ? "text-gray-400" : "text-gray-700"
+                        }`}>
+                            {comment.content}
+                        </p>
+                    )}
+
+                    {replyOpen && (
+                        <div className="mt-4 grid gap-3 border-t border-gray-100 pt-4">
+                            <textarea
+                                value={replyContent}
+                                onChange={(event) => onChangeReplyContent(event.target.value)}
+                                className="min-h-20 resize-none border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-black"
+                                placeholder={`${comment.nickname}님에게 답글을 입력해주세요.`}
+                                maxLength={1000}
+                            />
+
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={onCancelReply}
+                                    className="h-9 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onSubmitReply(comment.commentId)}
+                                    disabled={isSubmitting}
+                                    className="h-9 bg-black px-4 text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                >
+                                    {isSubmitting ? "등록 중..." : "답글 등록"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {editing ? (
-                <div className="mt-4 grid gap-3">
-                    <textarea
-                        value={editingContent}
-                        onChange={(event) => onChangeEditingContent(event.target.value)}
-                        className="min-h-24 resize-none border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-black"
-                        maxLength={1000}
-                    />
-
-                    <div className="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={onCancelEdit}
-                            className="h-9 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
-                        >
-                            취소
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onUpdate}
-                            className="h-9 bg-black px-4 text-sm font-bold text-white transition hover:opacity-80"
-                        >
-                            저장
-                        </button>
-                    </div>
+            {comment.children.length > 0 && (
+                <div className="mt-3 grid gap-3">
+                    {comment.children.map((childComment) => (
+                        <CommentRow
+                            key={childComment.commentId}
+                            comment={childComment}
+                            depth={depth + 1}
+                            replyingCommentId={replyingCommentId}
+                            replyContent={replyContent}
+                            editingCommentId={editingCommentId}
+                            editingContent={editingContent}
+                            isSubmitting={isSubmitting}
+                            onStartReply={onStartReply}
+                            onChangeReplyContent={onChangeReplyContent}
+                            onCancelReply={onCancelReply}
+                            onSubmitReply={onSubmitReply}
+                            onChangeEditingContent={onChangeEditingContent}
+                            onStartEdit={onStartEdit}
+                            onCancelEdit={onCancelEdit}
+                            onUpdate={onUpdate}
+                            onDelete={onDelete}
+                        />
+                    ))}
                 </div>
-            ) : (
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                    {comment.content}
-                </p>
             )}
         </div>
     );
+}
+
+function buildCommentTree(comments) {
+    const commentMap = new Map();
+    const rootComments = [];
+
+    comments.forEach((comment) => {
+        commentMap.set(comment.commentId, {
+            ...comment,
+            children: [],
+        });
+    });
+
+    commentMap.forEach((comment) => {
+        const parentComment = comment.parentCommentId ? commentMap.get(comment.parentCommentId) : null;
+
+        if (parentComment) {
+            parentComment.children.push(comment);
+            return;
+        }
+
+        rootComments.push(comment);
+    });
+
+    return rootComments;
 }
 
 function formatDateTime(value) {
