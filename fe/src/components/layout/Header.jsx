@@ -163,34 +163,36 @@ export default function Header({ onLoginClick }) {
                         Tail & Tale
                     </div>
 
-                    <nav className="hidden items-center gap-6 md:flex">
-                        <HeaderNavButton
-                            label="산책"
-                            path="/walks"
-                            isActive={location.pathname.startsWith("/walks")}
-                            onClick={movePage}
-                        />
-                        <HeaderNavButton
-                            label="커뮤니티"
-                            path="/community"
-                            isActive={location.pathname.startsWith("/community")}
-                            onClick={movePage}
-                        />
-                        <HeaderNavButton
-                            label="케어"
-                            path="/care"
-                            isActive={location.pathname.startsWith("/care")}
-                            onClick={movePage}
-                        />
-                        {member?.role === "ADMIN" && (
+                    {isLoggedIn && (
+                        <nav className="hidden items-center gap-6 md:flex">
                             <HeaderNavButton
-                                label="관리자"
-                                path="/admin"
-                                isActive={location.pathname.startsWith("/admin")}
+                                label="산책"
+                                path="/walks"
+                                isActive={location.pathname.startsWith("/walks")}
                                 onClick={movePage}
                             />
-                        )}
-                    </nav>
+                            <HeaderNavButton
+                                label="커뮤니티"
+                                path="/community"
+                                isActive={location.pathname.startsWith("/community")}
+                                onClick={movePage}
+                            />
+                            <HeaderNavButton
+                                label="케어"
+                                path="/care"
+                                isActive={location.pathname.startsWith("/care")}
+                                onClick={movePage}
+                            />
+                            {member?.role === "ADMIN" && (
+                                <HeaderNavButton
+                                    label="관리자"
+                                    path="/admin"
+                                    isActive={location.pathname.startsWith("/admin")}
+                                    onClick={movePage}
+                                />
+                            )}
+                        </nav>
+                    )}
                 </div>
 
                 <div className="flex h-10 items-center justify-end gap-3">
