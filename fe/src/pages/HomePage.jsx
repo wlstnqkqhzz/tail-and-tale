@@ -385,9 +385,12 @@ function HomeFeatureShowcase({
             <div className="mx-auto max-w-[1440px] overflow-hidden border border-gray-200 bg-white">
                 <div
                     className="flex transition-transform duration-500 ease-out"
-                    style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+                    style={{
+                        width: `${slides.length * 100}%`,
+                        transform: `translateX(-${activeSlide * (100 / slides.length)}%)`,
+                    }}
                 >
-                    <FeatureSlide>
+                    <FeatureSlide slideCount={slides.length}>
                         <WalkFeatureSlide
                             walks={featuredWalks}
                             isLoading={isLoading}
@@ -396,7 +399,7 @@ function HomeFeatureShowcase({
                         />
                     </FeatureSlide>
 
-                    <FeatureSlide>
+                    <FeatureSlide slideCount={slides.length}>
                         <div className="grid h-full gap-6 p-8 lg:grid-cols-3">
                             <TodayCareCard
                                 dog={primaryDog}
@@ -420,7 +423,7 @@ function HomeFeatureShowcase({
                         </div>
                     </FeatureSlide>
 
-                    <FeatureSlide>
+                    <FeatureSlide slideCount={slides.length}>
                         <div className="grid h-full gap-6 p-8 lg:grid-cols-2">
                             <HomeWalkSection
                                 eyebrow="POPULAR WALK"
@@ -446,7 +449,7 @@ function HomeFeatureShowcase({
                         </div>
                     </FeatureSlide>
 
-                    <FeatureSlide>
+                    <FeatureSlide slideCount={slides.length}>
                         <CommunityPopularSlide
                             posts={popularPosts}
                             isLoading={isLoading}
@@ -497,9 +500,9 @@ function HomeFeatureShowcase({
     );
 }
 
-function FeatureSlide({ children }) {
+function FeatureSlide({ children, slideCount }) {
     return (
-        <div className="h-[520px] min-w-full shrink-0 overflow-hidden">
+        <div className="h-[520px] shrink-0 overflow-hidden" style={{ width: `${100 / slideCount}%` }}>
             {children}
         </div>
     );
