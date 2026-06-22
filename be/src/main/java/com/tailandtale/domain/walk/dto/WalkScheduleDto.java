@@ -134,13 +134,17 @@ public class WalkScheduleDto {
         private WalkScheduleStatus status;
         private WalkParticipantStatus myParticipantStatus;
         private Boolean isRecruitable;
+        private Double averageRating;
+        private Long reviewCount;
 
         public static DetailResponse from(WalkSchedule walkSchedule) {
             return from(
                     walkSchedule,
                     0L,
                     0L,
-                    null
+                    null,
+                    0.0,
+                    0L
             );
         }
 
@@ -149,6 +153,24 @@ public class WalkScheduleDto {
                 long approvedParticipantCount,
                 long pendingRequestCount,
                 WalkParticipantStatus myParticipantStatus
+        ) {
+            return from(
+                    walkSchedule,
+                    approvedParticipantCount,
+                    pendingRequestCount,
+                    myParticipantStatus,
+                    0.0,
+                    0L
+            );
+        }
+
+        public static DetailResponse from(
+                WalkSchedule walkSchedule,
+                long approvedParticipantCount,
+                long pendingRequestCount,
+                WalkParticipantStatus myParticipantStatus,
+                Double averageRating,
+                Long reviewCount
         ) {
             long currentParticipantCount = approvedParticipantCount + 1;
             boolean isRecruitable = walkSchedule.getStatus() == WalkScheduleStatus.OPEN
@@ -175,6 +197,8 @@ public class WalkScheduleDto {
                     .status(walkSchedule.getStatus())
                     .myParticipantStatus(myParticipantStatus)
                     .isRecruitable(isRecruitable)
+                    .averageRating(averageRating == null ? 0.0 : averageRating)
+                    .reviewCount(reviewCount == null ? 0L : reviewCount)
                     .build();
         }
     }

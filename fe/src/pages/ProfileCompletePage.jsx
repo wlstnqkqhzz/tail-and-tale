@@ -493,7 +493,7 @@ export default function MyPage() {
                                             {emotionDiaries.slice(0, 3).map((diary) => (
                                                 <CareRow
                                                     key={diary.emotionDiaryId}
-                                                    title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
+                                                    title={emotionLabels[diary.emotion]}
                                                     meta={`${diary.recordedDate} · ${diary.dogName}`}
                                                     content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
                                                     onClick={() => moveCarePage("emotion", diary.dogId)}

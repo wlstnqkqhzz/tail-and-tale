@@ -58,7 +58,7 @@ public class MemberService {
     private final RefreshTokenRepository refreshTokenRepository;
 
     // 로그인
-    @Transactional
+    @Transactional(noRollbackFor = CustomException.class)
     public LoginFormDto.TokenResponse login(LoginFormDto.LoginRequest request) {
         Member member = memberRepository.findByEmail(request.getEmail()).orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
 
@@ -220,7 +220,7 @@ public class MemberService {
     }
 
     // Refresh Token 재발급
-    @Transactional
+    @Transactional(noRollbackFor = CustomException.class)
     public LoginFormDto.TokenResponse reissue(LoginFormDto.ReissueRequest request) {
         String refreshToken = request.getRefreshToken();
 
@@ -278,7 +278,8 @@ public class MemberService {
 
         validatePassword(member, request.getPassword());
 
-        if (member.getStatus() != MemberStatus.INACTIVE) {
+        if (member.getStatus() != MemberStatus.INACTIVE
+                && !(member.getStatus() == MemberStatus.ACTIVE && isDormantTarget(member))) {
             throw new CustomException(AuthErrorCode.LOGIN_FAILED);
         }
 

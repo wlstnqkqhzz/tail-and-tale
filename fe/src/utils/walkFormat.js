@@ -31,3 +31,12 @@ export function formatDateTime(dateTime) {
 
     return dateTime.replace("T", " ").slice(0, 16);
 }
+
+export function formatAverageRating(averageRating) {
+    const rating = Number(averageRating || 0);
+    const normalizedRating = Math.max(0, Math.min(5, rating));
+    const roundedRating = Math.round(normalizedRating * 10) / 10;
+    const fullStarCount = Math.round(normalizedRating);
+
+    return `${"★".repeat(fullStarCount)}${"☆".repeat(5 - fullStarCount)}(${roundedRating.toFixed(1)})`;
+}

@@ -7,7 +7,7 @@ import RegionSelect from "../components/common/RegionSelect";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
 import { getWalkSchedules } from "../api/walk";
 import { getAccessToken } from "../utils/token";
-import { formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
+import { formatAverageRating, formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
 
 const initialFilters = {
     keyword: "",
@@ -282,6 +282,11 @@ function WalkScheduleCard({ schedule, onClick }) {
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-500">
                     {schedule.description || "등록된 설명이 없습니다."}
                 </p>
+                {schedule.reviewCount > 0 && (
+                    <p className="mt-4 text-sm font-bold text-amber-500">
+                        {formatAverageRating(schedule.averageRating)}
+                    </p>
+                )}
             </div>
 
             <div className="mt-8">

@@ -323,6 +323,9 @@ export default function CarePage() {
         setEmotionForm((prevForm) => ({
             ...prevForm,
             [name]: value,
+            ...(name === "emotion"
+                ? { conditionLevel: quickEmotionOptions.find((option) => option.value === value)?.conditionLevel || prevForm.conditionLevel }
+                : {}),
         }));
     };
 
@@ -914,12 +917,11 @@ function CareSummary({ summary, selectedDog }) {
         { label: "산책 기록", value: walkSummary?.totalCount ?? 0 },
         { label: "총 산책 거리", value: walkSummary?.totalDistanceKm ? `${walkSummary.totalDistanceKm}km` : "-" },
         { label: "감정 기록", value: emotionSummary?.totalCount ?? 0 },
-        { label: "평균 컨디션", value: emotionSummary?.averageConditionLevel ? emotionSummary.averageConditionLevel.toFixed(1) : "-" },
         { label: "최근 몸무게", value: healthSummary?.latestWeight ? `${healthSummary.latestWeight}kg` : "-" },
     ];
 
     return (
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
             {items.map((item) => (
                 <div key={item.label} className="flex h-32 flex-col justify-between border border-gray-200 p-5">
                     <p className="text-sm font-bold text-gray-400">{item.label}</p>
@@ -1127,11 +1129,10 @@ function ReviewSection({
                     </button>
                 </div>
 
-                <div className="grid gap-3 border-b border-gray-100 py-5 md:grid-cols-4">
+                <div className="grid gap-3 border-b border-gray-100 py-5 md:grid-cols-3">
                     <ReviewStat label="기간" value={`${range.startDate} ~ ${range.endDate}`} />
                     <ReviewStat label="감정 기록" value={`${stats.recordedDays}일`} />
                     <ReviewStat label="산책 기록" value={`${stats.walkCount}회`} />
-                    <ReviewStat label="평균 컨디션" value={stats.averageCondition ? `${stats.averageCondition.toFixed(1)}점` : "-"} />
                 </div>
 
                 <div className="mt-6 grid grid-cols-7 border-l border-t border-gray-200">
@@ -1247,9 +1248,6 @@ function ReviewDayCell({ date, diary, health, walkCount }) {
             <div className="mt-3 grid gap-1 text-xs text-gray-400">
                 {diary ? (
                     <>
-                        <span className="font-bold text-gray-600">
-                            {conditionLevel ? `${conditionLevel}점` : emotionLabels[diary.emotion]}
-                        </span>
                         <span className="truncate">{diary.behaviorPattern || diary.diaryContent || "감정 기록 있음"}</span>
                     </>
                 ) : (
@@ -1420,7 +1418,7 @@ function QuickRecordModal({
                                 </div>
                             </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-4">
                                 <QuickField label="행동 패턴">
                                     <input
                                         name="behaviorPattern"
@@ -1428,17 +1426,6 @@ function QuickRecordModal({
                                         onChange={onChange}
                                         className="input"
                                         placeholder="예: 산책 후 잘 쉬었어요"
-                                    />
-                                </QuickField>
-                                <QuickField label="컨디션 점수">
-                                    <input
-                                        type="number"
-                                        name="conditionLevel"
-                                        min="1"
-                                        max="5"
-                                        value={form.conditionLevel}
-                                        onChange={onChange}
-                                        className="input"
                                     />
                                 </QuickField>
                             </div>
@@ -1635,14 +1622,31 @@ function EmotionSection({ form, walkRecords, diaries, isSubmitting, isEditing, o
                             </select>
                         </InputField>
                         <InputField label="감정">
-                            <select name="emotion" value={form.emotion} onChange={onChange} className="input">
-                                {Object.entries(emotionLabels).map(([value, label]) => (
-                                    <option key={value} value={value}>{label}</option>
-                                ))}
-                            </select>
-                        </InputField>
-                        <InputField label="컨디션 점수">
-                            <input type="number" name="conditionLevel" min="1" max="5" value={form.conditionLevel} onChange={onChange} className="input" />
+                            <div className="grid grid-cols-5 gap-2">
+                                {quickEmotionOptions.map((option) => {
+                                    const active = form.emotion === option.value;
+
+                                    return (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() => onChange({ target: { name: "emotion", value: option.value } })}
+                                            className={`grid h-20 place-items-center border text-center transition ${
+                                                active
+                                                    ? "border-black bg-gray-50 text-gray-950"
+                                                    : "border-gray-200 text-gray-700 hover:border-gray-400"
+                                            }`}
+                                        >
+                                            <img
+                                                src={getConditionIcon(option.conditionLevel)}
+                                                alt={getConditionLabel(option.conditionLevel)}
+                                                className="h-9 w-9 object-contain"
+                                            />
+                                            <span className="text-[11px] font-bold">{option.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </InputField>
                         <InputField label="행동 패턴">
                             <input name="behaviorPattern" value={form.behaviorPattern} onChange={onChange} className="input" placeholder="예: 산책 후 잘 쉬었어요" />
@@ -1659,7 +1663,7 @@ function EmotionSection({ form, walkRecords, diaries, isSubmitting, isEditing, o
                 {diaries.map((diary) => (
                     <RecordCard
                         key={diary.emotionDiaryId}
-                        title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
+                        title={emotionLabels[diary.emotion]}
                         meta={`${diary.recordedDate} · ${diary.dogName}`}
                         content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
                         icon={getConditionIcon(diary.conditionLevel)}
@@ -1989,18 +1993,11 @@ function getReviewStats(days, diariesByDate, walksByDate) {
     const diaries = days
         .map((date) => diariesByDate.get(date))
         .filter(Boolean);
-    const conditionLevels = diaries
-        .map((diary) => diary.conditionLevel ? Number(diary.conditionLevel) : null)
-        .filter((conditionLevel) => Number.isFinite(conditionLevel));
     const walkCount = days.reduce((totalCount, date) => totalCount + (walksByDate.get(date)?.length || 0), 0);
-    const averageCondition = conditionLevels.length > 0
-        ? conditionLevels.reduce((sum, conditionLevel) => sum + conditionLevel, 0) / conditionLevels.length
-        : null;
 
     return {
         recordedDays: diaries.length,
         walkCount,
-        averageCondition,
     };
 }
 

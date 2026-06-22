@@ -2,6 +2,8 @@ package com.tailandtale.domain.walk.repository;
 
 import com.tailandtale.domain.walk.entity.WalkReview;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +35,11 @@ public interface WalkReviewRepository extends JpaRepository<WalkReview, Long> {
             Long reviewerId,
             Long revieweeId
     );
+
+    // ?곗콉 ?꾧린 ?됯퇏 ?됱젏 議고쉶
+    @Query("select avg(walkReview.rating) from WalkReview walkReview where walkReview.walkSchedule.id = :walkScheduleId")
+    Double findAverageRatingByWalkScheduleId(@Param("walkScheduleId") Long walkScheduleId);
+
+    // ?곗콉 ?꾧린 媛쒖닔 議고쉶
+    long countByWalkScheduleId(Long walkScheduleId);
 }

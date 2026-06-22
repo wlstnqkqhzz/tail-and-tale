@@ -20,7 +20,7 @@ import {
 } from "../api/walk";
 import { useAuth } from "../hooks/useAuth";
 import { getAccessToken } from "../utils/token";
-import { formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
+import { formatAverageRating, formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
 
 const initialApplyForm = {
     dogId: "",
@@ -413,6 +413,11 @@ export default function WalkDetailPage() {
                                         <p className="mt-5 max-w-3xl text-base leading-7 text-gray-500">
                                             {schedule.description || "등록된 설명이 없습니다."}
                                         </p>
+                                        {schedule.reviewCount > 0 && (
+                                            <p className="mt-4 text-base font-bold text-amber-500">
+                                                {formatAverageRating(schedule.averageRating)}
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="grid gap-3 sm:grid-cols-2 lg:min-w-72">
@@ -738,10 +743,7 @@ function WalkReviewPanel({ reviews, canWriteReview, targetOptions, form, isSubmi
                         <div key={review.walkReviewId} className="border border-gray-200 p-5">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <p className="text-sm font-bold text-gray-400">
-                                        {review.reviewerNickname} → {review.revieweeNickname}
-                                    </p>
-                                    <h3 className="mt-2 text-lg font-bold text-gray-950">
+                                    <h3 className="text-lg font-bold text-gray-950">
                                         {renderRating(review.rating)} {review.rating}점
                                     </h3>
                                 </div>

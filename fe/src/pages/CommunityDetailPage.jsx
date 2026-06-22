@@ -31,6 +31,7 @@ export default function CommunityDetailPage() {
     const [commentContent, setCommentContent] = useState("");
     const [replyingCommentId, setReplyingCommentId] = useState(null);
     const [replyContent, setReplyContent] = useState("");
+    const [expandedCommentIds, setExpandedCommentIds] = useState(() => new Set());
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingContent, setEditingContent] = useState("");
     const [isLoading, setIsLoading] = useState(true);
@@ -147,6 +148,11 @@ export default function CommunityDetailPage() {
         setReplyContent("");
         setEditingCommentId(null);
         setEditingContent("");
+        setExpandedCommentIds((prevIds) => {
+            const nextIds = new Set(prevIds);
+            nextIds.add(comment.commentId);
+            return nextIds;
+        });
     };
 
     // 답글 작성
@@ -164,6 +170,11 @@ export default function CommunityDetailPage() {
                 content: replyContent.trim(),
             });
 
+            setExpandedCommentIds((prevIds) => {
+                const nextIds = new Set(prevIds);
+                nextIds.add(parentCommentId);
+                return nextIds;
+            });
             setReplyingCommentId(null);
             setReplyContent("");
             await Promise.all([
@@ -176,6 +187,21 @@ export default function CommunityDetailPage() {
         } finally {
             setIsCommentSubmitting(false);
         }
+    };
+
+    // 답글 목록 접기/펼치기
+    const handleToggleReplies = (commentId) => {
+        setExpandedCommentIds((prevIds) => {
+            const nextIds = new Set(prevIds);
+
+            if (nextIds.has(commentId)) {
+                nextIds.delete(commentId);
+            } else {
+                nextIds.add(commentId);
+            }
+
+            return nextIds;
+        });
     };
 
     // 댓글 수정 시작
@@ -358,6 +384,7 @@ export default function CommunityDetailPage() {
                                             depth={0}
                                             replyingCommentId={replyingCommentId}
                                             replyContent={replyContent}
+                                            expandedCommentIds={expandedCommentIds}
                                             editingCommentId={editingCommentId}
                                             editingContent={editingContent}
                                             isSubmitting={isCommentSubmitting}
@@ -368,6 +395,7 @@ export default function CommunityDetailPage() {
                                                 setReplyContent("");
                                             }}
                                             onSubmitReply={handleCreateReply}
+                                            onToggleReplies={handleToggleReplies}
                                             onChangeEditingContent={setEditingContent}
                                             onStartEdit={handleStartEditComment}
                                             onCancelEdit={() => {
@@ -431,6 +459,7 @@ function CommentRow({
     depth = 0,
     replyingCommentId,
     replyContent,
+    expandedCommentIds,
     editingCommentId,
     editingContent,
     isSubmitting,
@@ -438,6 +467,7 @@ function CommentRow({
     onChangeReplyContent,
     onCancelReply,
     onSubmitReply,
+    onToggleReplies,
     onChangeEditingContent,
     onStartEdit,
     onCancelEdit,
@@ -447,13 +477,17 @@ function CommentRow({
     const replyOpen = replyingCommentId === comment.commentId;
     const editing = editingCommentId === comment.commentId;
     const indent = Math.min(depth, 4) * 24;
+    const replyCount = countChildComments(comment);
+    const hasReplies = comment.children.length > 0;
+    const repliesOpen = depth > 0 || expandedCommentIds.has(comment.commentId);
+    const showReplyToggle = depth === 0 && hasReplies;
 
     return (
-        <div style={{ marginLeft: indent }} className={depth > 0 ? "relative" : ""}>
+        <div style={{ marginLeft: indent }}>
             <div className="flex items-start gap-2">
                 {depth > 0 && (
                     <span className="mt-5 shrink-0 text-2xl font-bold leading-none text-gray-300" aria-hidden="true">
-                        ↪
+                        ↳
                     </span>
                 )}
 
@@ -527,28 +561,39 @@ function CommentRow({
                         <p className={`mt-4 whitespace-pre-wrap text-sm leading-7 ${
                             comment.isDeleted ? "text-gray-400" : "text-gray-700"
                         }`}>
+                            {comment.parentNickname && !comment.isDeleted && (
+                                <span className="mr-1 font-bold text-gray-400">
+                                    {comment.parentNickname}
+                                </span>
+                            )}
                             {comment.content}
                         </p>
                     )}
 
                     {replyOpen && (
                         <div className="mt-4 grid gap-3 border-t border-gray-100 pt-4">
+                            <div className="flex items-center justify-between bg-gray-50 px-4 py-3 text-sm">
+                                <span className="font-bold text-gray-700">
+                                    {comment.nickname}에게 답글 작성 중
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={onCancelReply}
+                                    className="text-xs font-bold text-gray-400 transition hover:text-gray-950"
+                                >
+                                    취소
+                                </button>
+                            </div>
+
                             <textarea
                                 value={replyContent}
                                 onChange={(event) => onChangeReplyContent(event.target.value)}
                                 className="min-h-20 resize-none border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-black"
-                                placeholder={`${comment.nickname}님에게 답글을 입력해주세요.`}
+                                placeholder={`${comment.nickname}에게 답글을 입력해주세요.`}
                                 maxLength={1000}
                             />
 
-                            <div className="flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={onCancelReply}
-                                    className="h-9 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
-                                >
-                                    취소
-                                </button>
+                            <div className="flex justify-end">
                                 <button
                                     type="button"
                                     onClick={() => onSubmitReply(comment.commentId)}
@@ -563,7 +608,25 @@ function CommentRow({
                 </div>
             </div>
 
-            {comment.children.length > 0 && (
+            {showReplyToggle && (
+                <div className="ml-8 mt-3">
+                    <button
+                        type="button"
+                        onClick={() => onToggleReplies(comment.commentId)}
+                        className="flex items-center gap-2 text-sm font-bold text-gray-500 transition hover:text-gray-950"
+                    >
+                        <span
+                            className={`h-2 w-2 border-b-2 border-r-2 border-gray-300 transition-transform ${
+                                repliesOpen ? "-translate-y-0.5 rotate-[225deg]" : "-translate-y-0.5 rotate-45"
+                            }`}
+                            aria-hidden="true"
+                        />
+                        {repliesOpen ? "답글 숨기기" : `답글 ${replyCount}개 보기`}
+                    </button>
+                </div>
+            )}
+
+            {hasReplies && repliesOpen && (
                 <div className="mt-3 grid gap-3">
                     {comment.children.map((childComment) => (
                         <CommentRow
@@ -572,6 +635,7 @@ function CommentRow({
                             depth={depth + 1}
                             replyingCommentId={replyingCommentId}
                             replyContent={replyContent}
+                            expandedCommentIds={expandedCommentIds}
                             editingCommentId={editingCommentId}
                             editingContent={editingContent}
                             isSubmitting={isSubmitting}
@@ -579,6 +643,7 @@ function CommentRow({
                             onChangeReplyContent={onChangeReplyContent}
                             onCancelReply={onCancelReply}
                             onSubmitReply={onSubmitReply}
+                            onToggleReplies={onToggleReplies}
                             onChangeEditingContent={onChangeEditingContent}
                             onStartEdit={onStartEdit}
                             onCancelEdit={onCancelEdit}
@@ -591,7 +656,6 @@ function CommentRow({
         </div>
     );
 }
-
 function buildCommentTree(comments) {
     const commentMap = new Map();
     const rootComments = [];
@@ -607,6 +671,7 @@ function buildCommentTree(comments) {
         const parentComment = comment.parentCommentId ? commentMap.get(comment.parentCommentId) : null;
 
         if (parentComment) {
+            comment.parentNickname = comment.parentNickname || parentComment.nickname;
             parentComment.children.push(comment);
             return;
         }
@@ -615,6 +680,13 @@ function buildCommentTree(comments) {
     });
 
     return rootComments;
+}
+
+function countChildComments(comment) {
+    return comment.children.reduce(
+        (totalCount, childComment) => totalCount + 1 + countChildComments(childComment),
+        0
+    );
 }
 
 function formatDateTime(value) {

@@ -10,6 +10,7 @@ import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
 import com.tailandtale.domain.walk.entity.WalkScheduleStatus;
 import com.tailandtale.domain.walk.repository.WalkParticipantRepository;
+import com.tailandtale.domain.walk.repository.WalkReviewRepository;
 import com.tailandtale.domain.walk.repository.WalkScheduleRepository;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
@@ -30,6 +31,7 @@ import java.util.List;
 public class WalkScheduleService {
     private final WalkScheduleRepository walkScheduleRepository;
     private final WalkParticipantRepository walkParticipantRepository;
+    private final WalkReviewRepository walkReviewRepository;
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
     private final ChatService chatService;
@@ -260,12 +262,16 @@ public class WalkScheduleService {
                 WalkParticipantStatus.REQUESTED
         );
         WalkParticipantStatus myParticipantStatus = getMyParticipantStatus(walkSchedule.getId(), memberId);
+        Double averageRating = walkReviewRepository.findAverageRatingByWalkScheduleId(walkSchedule.getId());
+        long reviewCount = walkReviewRepository.countByWalkScheduleId(walkSchedule.getId());
 
         return WalkScheduleDto.DetailResponse.from(
                 walkSchedule,
                 approvedParticipantCount,
                 pendingRequestCount,
-                myParticipantStatus
+                myParticipantStatus,
+                averageRating,
+                reviewCount
         );
     }
 

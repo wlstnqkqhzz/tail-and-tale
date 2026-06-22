@@ -49,6 +49,7 @@ public class CommunityCommentDto {
         private String nickname;
         private String profileImageUrl;
         private Long parentCommentId;
+        private String parentNickname;
         private String content;
         private Boolean isDeleted;
         private Boolean isWriter;
@@ -66,6 +67,7 @@ public class CommunityCommentDto {
                     .nickname(comment.getMember().getNickname())
                     .profileImageUrl(comment.getMember().getProfileImageUrl())
                     .parentCommentId(comment.getParentComment() == null ? null : comment.getParentComment().getId())
+                    .parentNickname(comment.getParentComment() == null ? null : comment.getParentComment().getMember().getNickname())
                     .content(deleted ? "삭제된 댓글입니다." : comment.getContent())
                     .isDeleted(deleted)
                     .isWriter(!deleted && comment.isWriter(loginMemberId))
