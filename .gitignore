@@ -8,3 +8,7 @@ Thumbs.db
 
 # Local database scripts
 docs/
+
+# Uploaded local files
+uploads/
+be/uploads/

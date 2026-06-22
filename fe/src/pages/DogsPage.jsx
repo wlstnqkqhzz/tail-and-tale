@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
-import { deleteDog, getDog, getDogs, registerDog, updateDog, verifyDog } from "../api/dog";
+import { deleteDog, getDog, getDogs, registerDog, updateDog, uploadDogImage, verifyDog } from "../api/dog";
 import { getAccessToken } from "../utils/token";
 
 const initialForm = {
@@ -20,6 +20,7 @@ const initialForm = {
 };
 
 const MAX_DOG_WEIGHT = 999.99;
+const MAX_DOG_IMAGE_SIZE = 5 * 1024 * 1024;
 const WALK_CREATE_NOTICE_KEY = "walkCreateAccessNotice";
 const WALK_CREATE_NOTICE_LOCK_KEY = "walkCreateAccessNoticeLock";
 
@@ -37,6 +38,7 @@ export default function DogsPage() {
     // 요청 상태
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isImageUploading, setIsImageUploading] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [animalRegistrationNumber, setAnimalRegistrationNumber] = useState("");
@@ -114,6 +116,44 @@ export default function DogsPage() {
             ...prevForm,
             [name]: type === "checkbox" ? checked : value,
         }));
+    };
+
+    // 반려견 이미지 업로드
+    const handleImageUpload = async (event) => {
+        const image = event.target.files?.[0];
+
+        if (!image) {
+            return;
+        }
+
+        if (!image.type.startsWith("image/")) {
+            alert("이미지 파일만 업로드할 수 있습니다.");
+            event.target.value = "";
+            return;
+        }
+
+        if (image.size > MAX_DOG_IMAGE_SIZE) {
+            alert("반려견 이미지는 5MB 이하로 업로드해주세요.");
+            event.target.value = "";
+            return;
+        }
+
+        try {
+            setIsImageUploading(true);
+
+            const response = await uploadDogImage(image);
+
+            setForm((prevForm) => ({
+                ...prevForm,
+                profileImageUrl: response.data.profileImageUrl,
+            }));
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "반려견 이미지 업로드에 실패했습니다.");
+        } finally {
+            setIsImageUploading(false);
+            event.target.value = "";
+        }
     };
 
     // API 요청 데이터 생성
@@ -394,17 +434,44 @@ export default function DogsPage() {
                                 />
                             </label>
 
-                            {/* 프로필 이미지 URL */}
-                            <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
-                                프로필 이미지 URL
-                                <input
-                                    name="profileImageUrl"
-                                    value={form.profileImageUrl}
-                                    onChange={handleChange}
-                                    className="h-12 rounded-xl border border-gray-200 px-4 text-base outline-none transition focus:border-black"
-                                    placeholder="https://example.com/dog.jpg"
-                                />
-                            </label>
+                            {/* 프로필 이미지 */}
+                            <div className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+                                프로필 이미지
+
+                                <div className="flex items-center gap-4 rounded-2xl border border-gray-200 p-4">
+                                    <DogImagePreview
+                                        imageUrl={form.profileImageUrl}
+                                        name={form.name}
+                                    />
+
+                                    <div className="min-w-0 flex-1">
+                                        <label className="inline-flex h-11 cursor-pointer items-center rounded-xl bg-black px-4 text-sm font-semibold text-white transition hover:opacity-80">
+                                            {isImageUploading ? "업로드 중..." : "이미지 선택"}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageUpload}
+                                                disabled={isImageUploading}
+                                                className="hidden"
+                                            />
+                                        </label>
+
+                                        {form.profileImageUrl ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm((prevForm) => ({ ...prevForm, profileImageUrl: "" }))}
+                                                className="ml-2 h-11 rounded-xl border border-gray-200 px-4 text-sm transition hover:bg-gray-50"
+                                            >
+                                                제거
+                                            </button>
+                                        ) : null}
+
+                                        <p className="mt-2 text-xs font-normal text-gray-400">
+                                            JPG, PNG, WEBP, GIF 파일을 5MB 이하로 업로드할 수 있습니다.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* 중성화 여부 */}
                             <label className="flex h-12 items-center justify-between rounded-xl border border-gray-200 px-4 text-sm font-medium text-gray-700">
@@ -629,16 +696,39 @@ export default function DogsPage() {
     );
 }
 
+// 반려견 이미지 미리보기
+function DogImagePreview({ imageUrl, name }) {
+    const [hasImageError, setHasImageError] = useState(false);
+    const resolvedImageUrl = resolveImageUrl(imageUrl);
+    const hasImage = resolvedImageUrl && !hasImageError;
+
+    return (
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-gray-100 text-2xl font-bold text-gray-500">
+            {hasImage ? (
+                <img
+                    src={resolvedImageUrl}
+                    alt={name || "반려견 이미지"}
+                    onError={() => setHasImageError(true)}
+                    className="h-full w-full object-cover"
+                />
+            ) : (
+                <span>{name?.slice(0, 1) || "D"}</span>
+            )}
+        </div>
+    );
+}
+
 // 반려견 이미지
 function DogAvatar({ dog, className }) {
     const [hasImageError, setHasImageError] = useState(false);
-    const hasImage = dog.profileImageUrl && !hasImageError;
+    const imageUrl = resolveImageUrl(dog.profileImageUrl);
+    const hasImage = imageUrl && !hasImageError;
 
     return (
         <div className={`flex shrink-0 items-center justify-center overflow-hidden bg-gray-100 font-bold text-gray-500 ${className}`}>
             {hasImage ? (
                 <img
-                    src={dog.profileImageUrl}
+                    src={imageUrl}
                     alt={dog.name}
                     onError={() => setHasImageError(true)}
                     className="h-full w-full object-cover"
@@ -648,6 +738,19 @@ function DogAvatar({ dog, className }) {
             )}
         </div>
     );
+}
+
+// 이미지 URL 보정
+function resolveImageUrl(imageUrl) {
+    if (!imageUrl) {
+        return "";
+    }
+
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+        return imageUrl;
+    }
+
+    return `${import.meta.env.VITE_API_BASE_URL}${imageUrl}`;
 }
 
 // 상세 정보 항목

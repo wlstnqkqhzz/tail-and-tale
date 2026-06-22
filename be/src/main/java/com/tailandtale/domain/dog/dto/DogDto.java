@@ -129,4 +129,11 @@ public class DogDto {
         @NotBlank(message = "동물등록번호는 필수입니다.")
         private String animalRegistrationNumber;
     }
+
+    // 반려견 이미지 업로드 응답 DTO
+    @Getter
+    @Builder
+    public static class ImageUploadResponse {
+        private String profileImageUrl;
+    }
 }

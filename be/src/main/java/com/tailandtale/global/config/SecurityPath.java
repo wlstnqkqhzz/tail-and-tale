@@ -15,6 +15,7 @@ public final class SecurityPath {
             "/api/members/logout",
             "/ws-chat",
             "/ws-chat/**",
+            "/uploads/**",
             "/oauth2/**",
             "/login/oauth2/**",
             "/error"

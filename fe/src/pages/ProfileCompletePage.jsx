@@ -26,10 +26,7 @@ const dashboardTabs = [
     { key: "chats", label: "채팅방" },
     { key: "community", label: "커뮤니티" },
     { key: "reviews", label: "산책 후기" },
-    { key: "walkRecords", label: "산책 기록" },
-    { key: "emotions", label: "감정 일기" },
-    { key: "health", label: "건강 체크" },
-    { key: "analysis", label: "AI 분석" },
+    { key: "care", label: "케어" },
 ];
 
 const emotionLabels = {
@@ -264,7 +261,7 @@ export default function MyPage() {
                             onSubmit={handleSubmit}
                         />
 
-                        <div className="grid gap-8">
+                        <div className="grid content-start gap-8 self-start">
                             <SummaryGrid
                                 dogs={dogs}
                                 myWalks={myWalks}
@@ -395,90 +392,112 @@ export default function MyPage() {
                                 </DashboardSection>
                             )}
 
-                            {activeDashboardTab === "walkRecords" && (
+                            {activeDashboardTab === "reviews" && (
                                 <DashboardSection
-                                    title="최근 산책 기록"
-                                    count={walkRecords.length}
-                                    emptyText="작성한 산책 기록이 없습니다."
-                                    actionLabel="산책 기록 관리"
-                                    onAction={() => moveCarePage("walk", walkRecords[0]?.dogId)}
+                                    title="내 산책 후기"
+                                    count={writtenReviews.length + receivedReviews.length}
+                                    emptyText="작성하거나 받은 산책 후기가 없습니다."
+                                    actionLabel="산책 보기"
+                                    onAction={() => navigate("/walks")}
                                 >
-                                    <div className="grid gap-3">
-                                        {walkRecords.slice(0, 4).map((record) => (
-                                            <CareRow
-                                                key={record.walkRecordId}
-                                                title={`${conditionAfterWalkLabels[record.conditionAfterWalk] || "상태 미입력"} · ${record.durationMinutes ? `${record.durationMinutes}분` : "시간 미입력"}`}
-                                                meta={`${formatDateOnly(record.startedAt)} · ${record.dogName}`}
-                                                content={record.memo || record.routeSummary || "기록된 내용이 없습니다."}
-                                                onClick={() => moveCarePage("walk", record.dogId)}
-                                            />
-                                        ))}
+                                    <div className="grid gap-6">
+                                        <ReviewGroup
+                                            title="내가 쓴 후기"
+                                            reviews={writtenReviews}
+                                            emptyText="작성한 산책 후기가 없습니다."
+                                            onClick={(review) => navigate(`/walks/${review.walkScheduleId}`)}
+                                        />
+
+                                        <ReviewGroup
+                                            title="내가 받은 후기"
+                                            reviews={receivedReviews}
+                                            emptyText="받은 산책 후기가 없습니다."
+                                            onClick={(review) => navigate(`/walks/${review.walkScheduleId}`)}
+                                        />
                                     </div>
                                 </DashboardSection>
                             )}
 
-                            {activeDashboardTab === "emotions" && (
+                            {activeDashboardTab === "care" && (
                                 <DashboardSection
-                                    title="최근 감정 일기"
-                                    count={emotionDiaries.length}
-                                    emptyText="작성한 감정 일기가 없습니다."
-                                    actionLabel="감정 일기 관리"
-                                    onAction={() => moveCarePage("emotion", emotionDiaries[0]?.dogId)}
+                                    title="내 케어 기록"
+                                    count={walkRecords.length + emotionDiaries.length + healthRecords.length + aiAnalyses.length}
+                                    emptyText="작성한 케어 기록이 없습니다."
+                                    actionLabel="케어 관리"
+                                    onAction={() => moveCarePage("walk", dogs[0]?.dogId)}
                                 >
-                                    <div className="grid gap-3">
-                                        {emotionDiaries.slice(0, 4).map((diary) => (
-                                            <CareRow
-                                                key={diary.emotionDiaryId}
-                                                title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
-                                                meta={`${diary.recordedDate} · ${diary.dogName}`}
-                                                content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
-                                                onClick={() => moveCarePage("emotion", diary.dogId)}
-                                            />
-                                        ))}
-                                    </div>
-                                </DashboardSection>
-                            )}
+                                    <div className="grid gap-6">
+                                        <CareGroup
+                                            title="산책 기록"
+                                            count={walkRecords.length}
+                                            emptyText="작성한 산책 기록이 없습니다."
+                                            actionLabel="산책 기록 보기"
+                                            onAction={() => moveCarePage("walk", walkRecords[0]?.dogId || dogs[0]?.dogId)}
+                                        >
+                                            {walkRecords.slice(0, 3).map((record) => (
+                                                <CareRow
+                                                    key={record.walkRecordId}
+                                                    title={`${conditionAfterWalkLabels[record.conditionAfterWalk] || "상태 미입력"} · ${record.durationMinutes ? `${record.durationMinutes}분` : "시간 미입력"}`}
+                                                    meta={`${formatDateOnly(record.startedAt)} · ${record.dogName}`}
+                                                    content={record.memo || record.routeSummary || "기록된 내용이 없습니다."}
+                                                    onClick={() => moveCarePage("walk", record.dogId)}
+                                                />
+                                            ))}
+                                        </CareGroup>
 
-                            {activeDashboardTab === "health" && (
-                                <DashboardSection
-                                    title="최근 건강 체크"
-                                    count={healthRecords.length}
-                                    emptyText="작성한 건강 기록이 없습니다."
-                                    actionLabel="건강 체크 관리"
-                                    onAction={() => moveCarePage("health", healthRecords[0]?.dogId)}
-                                >
-                                    <div className="grid gap-3">
-                                        {healthRecords.slice(0, 4).map((record) => (
-                                            <CareRow
-                                                key={record.healthRecordId}
-                                                title={`${healthLabels[record.healthStatus] || "상태 미입력"} · ${record.weight ? `${record.weight}kg` : "몸무게 미입력"}`}
-                                                meta={`${record.recordedDate} · ${record.dogName}`}
-                                                content={record.memo || record.symptoms || "기록된 내용이 없습니다."}
-                                                onClick={() => moveCarePage("health", record.dogId)}
-                                            />
-                                        ))}
-                                    </div>
-                                </DashboardSection>
-                            )}
+                                        <CareGroup
+                                            title="감정 일기"
+                                            count={emotionDiaries.length}
+                                            emptyText="작성한 감정 일기가 없습니다."
+                                            actionLabel="감정 일기 보기"
+                                            onAction={() => moveCarePage("emotion", emotionDiaries[0]?.dogId || dogs[0]?.dogId)}
+                                        >
+                                            {emotionDiaries.slice(0, 3).map((diary) => (
+                                                <CareRow
+                                                    key={diary.emotionDiaryId}
+                                                    title={`${emotionLabels[diary.emotion]} · ${diary.conditionLevel || "-"}점`}
+                                                    meta={`${diary.recordedDate} · ${diary.dogName}`}
+                                                    content={diary.diaryContent || diary.behaviorPattern || "기록된 내용이 없습니다."}
+                                                    onClick={() => moveCarePage("emotion", diary.dogId)}
+                                                />
+                                            ))}
+                                        </CareGroup>
 
-                            {activeDashboardTab === "analysis" && (
-                                <DashboardSection
-                                    title="최근 AI 분석"
-                                    count={aiAnalyses.length}
-                                    emptyText="생성한 AI 분석 결과가 없습니다."
-                                    actionLabel="AI 분석 관리"
-                                    onAction={() => moveCarePage("analysis", aiAnalyses[0]?.dogId)}
-                                >
-                                    <div className="grid gap-3">
-                                        {aiAnalyses.slice(0, 4).map((analysis) => (
-                                            <CareRow
-                                                key={analysis.aiAnalysisResultId}
-                                                title={analysis.summary}
-                                                meta={`${analysisLabels[analysis.analysisType]} · ${analysis.dogName}`}
-                                                content={analysis.guideContent || analysis.resultContent}
-                                                onClick={() => moveCarePage("analysis", analysis.dogId)}
-                                            />
-                                        ))}
+                                        <CareGroup
+                                            title="건강 체크"
+                                            count={healthRecords.length}
+                                            emptyText="작성한 건강 기록이 없습니다."
+                                            actionLabel="건강 체크 보기"
+                                            onAction={() => moveCarePage("health", healthRecords[0]?.dogId || dogs[0]?.dogId)}
+                                        >
+                                            {healthRecords.slice(0, 3).map((record) => (
+                                                <CareRow
+                                                    key={record.healthRecordId}
+                                                    title={`${healthLabels[record.healthStatus] || "상태 미입력"} · ${record.weight ? `${record.weight}kg` : "몸무게 미입력"}`}
+                                                    meta={`${record.recordedDate} · ${record.dogName}`}
+                                                    content={record.memo || record.symptoms || "기록된 내용이 없습니다."}
+                                                    onClick={() => moveCarePage("health", record.dogId)}
+                                                />
+                                            ))}
+                                        </CareGroup>
+
+                                        <CareGroup
+                                            title="AI 분석"
+                                            count={aiAnalyses.length}
+                                            emptyText="생성한 AI 분석 결과가 없습니다."
+                                            actionLabel="AI 분석 보기"
+                                            onAction={() => moveCarePage("analysis", aiAnalyses[0]?.dogId || dogs[0]?.dogId)}
+                                        >
+                                            {aiAnalyses.slice(0, 3).map((analysis) => (
+                                                <CareRow
+                                                    key={analysis.aiAnalysisResultId}
+                                                    title={analysis.summary}
+                                                    meta={`${analysisLabels[analysis.analysisType]} · ${analysis.dogName}`}
+                                                    content={analysis.guideContent || analysis.resultContent}
+                                                    onClick={() => moveCarePage("analysis", analysis.dogId)}
+                                                />
+                                            ))}
+                                        </CareGroup>
                                     </div>
                                 </DashboardSection>
                             )}
@@ -494,7 +513,7 @@ export default function MyPage() {
 function DashboardTabs({ activeTab, onChange }) {
     return (
         <div className="border-b border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
                 {dashboardTabs.map((tab) => (
                     <button
                         key={tab.key}
@@ -587,14 +606,18 @@ function SummaryGrid({
     myWalks = [],
     chatRooms = [],
     walkRecords = [],
+    emotionDiaries = [],
+    healthRecords = [],
+    aiAnalyses = [],
     communityPosts = [],
 }) {
+    const careCount = walkRecords.length + emotionDiaries.length + healthRecords.length + aiAnalyses.length;
     const items = [
         { label: "반려견", value: dogs.length },
         { label: "작성 글", value: myWalks.length },
         { label: "커뮤니티", value: communityPosts.length },
         { label: "채팅방", value: chatRooms.length },
-        { label: "산책 기록", value: walkRecords.length },
+        { label: "케어", value: careCount },
     ];
 
     return (
@@ -803,6 +826,36 @@ function CommunityGroup({ title, items, emptyText, type, onClick }) {
                 </div>
             )}
         </div>
+    );
+}
+
+// 케어 기록 행
+function CareGroup({ title, count, emptyText, actionLabel, onAction, children }) {
+    return (
+        <section className="border border-gray-200 p-5">
+            <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-bold text-gray-950">{title}</h3>
+                    <p className="mt-1 text-sm text-gray-400">{count}건</p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onAction}
+                    className="h-9 shrink-0 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
+                >
+                    {actionLabel}
+                </button>
+            </div>
+
+            {count === 0 ? (
+                <div className="flex h-24 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                    {emptyText}
+                </div>
+            ) : (
+                <div className="grid gap-3">{children}</div>
+            )}
+        </section>
     );
 }
 

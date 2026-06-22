@@ -20,6 +20,19 @@ export const updateDog = (dogId, data) => {
     return api.patch(`/api/dogs/${dogId}`, data);
 };
 
+// 반려견 이미지 업로드
+export const uploadDogImage = (image) => {
+    const formData = new FormData();
+
+    formData.append("image", image);
+
+    return api.post("/api/dogs/images", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+    });
+};
+
 // 반려견 삭제
 export const deleteDog = (dogId) => {
     return api.delete(`/api/dogs/${dogId}`);
