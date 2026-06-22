@@ -10,6 +10,11 @@ export const signup = (data) => {
     return api.post("/api/members/signup", data);
 };
 
+// 휴면 계정 재활성화
+export const reactivateDormantAccount = (data) => {
+    return api.post("/api/members/reactivate", data);
+};
+
 // OAuth 추가 정보 입력 완료
 export const completeProfile = (data) => {
     return api.patch("/api/members/me/profile/complete", data);
@@ -23,6 +28,16 @@ export const getMyInfo = () => {
 // 내 정보 수정
 export const updateMyProfile = (data) => {
     return api.patch("/api/members/me", data);
+};
+
+// 내 비밀번호 확인
+export const verifyMyPassword = (data) => {
+    return api.post("/api/members/me/password/verify", data);
+};
+
+// 회원 탈퇴
+export const withdrawMyAccount = (data) => {
+    return api.patch("/api/members/me/withdraw", data);
 };
 
 // 내 마이페이지 대시보드 조회

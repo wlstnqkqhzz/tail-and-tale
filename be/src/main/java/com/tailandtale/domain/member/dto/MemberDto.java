@@ -122,6 +122,15 @@ public class MemberDto {
         private String introduction;
     }
 
+    // 비밀번호 확인 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class PasswordConfirmRequest {
+
+        @NotBlank(message = "비밀번호는 필수입니다.")
+        private String password;
+    }
+
     // 마이페이지 대시보드 응답 DTO
     @Getter
     @Builder

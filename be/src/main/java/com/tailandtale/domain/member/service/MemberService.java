@@ -12,6 +12,7 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.dto.LoginFormDto;
 import com.tailandtale.domain.member.dto.MemberDto;
 import com.tailandtale.domain.member.entity.Member;
+import com.tailandtale.domain.member.entity.MemberStatus;
 import com.tailandtale.domain.member.entity.RefreshToken;
 import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.member.repository.RefreshTokenRepository;
@@ -38,6 +39,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MemberService {
+    private static final int DORMANT_MONTHS = 6;
+
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
     private final WalkScheduleRepository walkScheduleRepository;
@@ -59,9 +62,12 @@ public class MemberService {
     public LoginFormDto.TokenResponse login(LoginFormDto.LoginRequest request) {
         Member member = memberRepository.findByEmail(request.getEmail()).orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
 
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+        if (member.getPassword() == null || !passwordEncoder.matches(request.getPassword(), member.getPassword())) {
             throw new CustomException(AuthErrorCode.LOGIN_FAILED);
         }
+
+        validateLoginAllowed(member);
+        member.recordLogin();
 
         String accessToken = jwtProvider.createAccessToken(member.getId());
         String refreshToken = jwtProvider.createRefreshToken(member.getId());
@@ -113,6 +119,47 @@ public class MemberService {
         Member member = memberRepository.findById(memberId).orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
 
         return MemberDto.DetailResponse.from(member);
+    }
+
+    // 내 정보 수정
+    @Transactional
+    public MemberDto.DetailResponse updateMyProfile(Long memberId, MemberDto.UpdateRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        memberRepository.findByNickname(request.getNickname())
+                .filter(foundMember -> !foundMember.getId().equals(memberId))
+                .ifPresent(foundMember -> {
+                    throw new CustomException(MemberErrorCode.DUPLICATE_NICKNAME);
+                });
+
+        member.updateProfile(
+                request.getNickname(),
+                request.getPhoneNumber(),
+                request.getRegion(),
+                request.getIntroduction()
+        );
+
+        return MemberDto.DetailResponse.from(member);
+    }
+
+    // 내 비밀번호 확인
+    public void verifyMyPassword(Long memberId, MemberDto.PasswordConfirmRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        validatePassword(member, request.getPassword());
+    }
+
+    // 회원 탈퇴
+    @Transactional
+    public void withdraw(Long memberId, MemberDto.PasswordConfirmRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        validatePassword(member, request.getPassword());
+        member.withdraw();
+        refreshTokenRepository.revokeAllByMemberId(memberId, LocalDateTime.now());
     }
 
     // 마이페이지 대시보드 조회
@@ -186,6 +233,8 @@ public class MemberService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
 
+        validateLoginAllowed(member);
+
         RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
                 .orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
 
@@ -219,6 +268,21 @@ public class MemberService {
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .build();
+    }
+
+    // 휴면 계정 재활성화
+    @Transactional
+    public void reactivateDormantAccount(LoginFormDto.LoginRequest request) {
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
+
+        validatePassword(member, request.getPassword());
+
+        if (member.getStatus() != MemberStatus.INACTIVE) {
+            throw new CustomException(AuthErrorCode.LOGIN_FAILED);
+        }
+
+        member.reactivateDormantAccount();
     }
 
     // 로그아웃
@@ -268,5 +332,42 @@ public class MemberService {
                 walkScheduleId,
                 WalkParticipantStatus.APPROVED
         );
+    }
+
+    // 회원 상태별 로그인 및 토큰 재발급 차단
+    private void validateLoginAllowed(Member member) {
+        if (member.getStatus() == MemberStatus.ACTIVE && isDormantTarget(member)) {
+            member.deactivate();
+            throw new CustomException(AuthErrorCode.ACCOUNT_INACTIVE);
+        }
+
+        if (member.getStatus() == MemberStatus.INACTIVE) {
+            throw new CustomException(AuthErrorCode.ACCOUNT_INACTIVE);
+        }
+
+        if (member.getStatus() == MemberStatus.BANNED) {
+            throw new CustomException(AuthErrorCode.ACCOUNT_BANNED);
+        }
+
+        if (member.getStatus() == MemberStatus.DELETED) {
+            throw new CustomException(AuthErrorCode.ACCOUNT_DELETED);
+        }
+    }
+
+    // 휴면 전환 대상 여부 확인
+    private boolean isDormantTarget(Member member) {
+        LocalDateTime baseDateTime = member.getLastLoginAt() != null
+                ? member.getLastLoginAt()
+                : member.getCreatedAt();
+
+        return baseDateTime != null
+                && baseDateTime.isBefore(LocalDateTime.now().minusMonths(DORMANT_MONTHS));
+    }
+
+    // 비밀번호 검증
+    private void validatePassword(Member member, String password) {
+        if (member.getPassword() == null || !passwordEncoder.matches(password, member.getPassword())) {
+            throw new CustomException(AuthErrorCode.INVALID_PASSWORD);
+        }
     }
 }

@@ -9,6 +9,7 @@ public final class SecurityPath {
     public static final String[] PUBLIC_API = {
             "/api/members/signup",
             "/api/members/login",
+            "/api/members/reactivate",
             "/api/members/check-email",
             "/api/members/check-nickname",
             "/api/members/reissue",

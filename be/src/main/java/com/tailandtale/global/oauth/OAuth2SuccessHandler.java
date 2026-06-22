@@ -32,6 +32,8 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+    private static final int DORMANT_MONTHS = 6;
+
     @Value("${app.frontend-url}")
     private String frontendBaseUrl;
 
@@ -63,6 +65,39 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         Member member = oAuthAccountRepository.findByProviderAndProviderUserId(provider, memberInfo.providerUserId())
                 .map(OAuthAccount::getMember)
                 .orElseGet(() -> createOrLinkOAuthMember(provider, memberInfo));
+
+        if (member.getStatus() == MemberStatus.ACTIVE && isDormantTarget(member)) {
+            member.deactivate();
+        }
+
+        if (member.getStatus() == MemberStatus.INACTIVE) {
+            response.sendRedirect(
+                    frontendBaseUrl + "/oauth2/redirect"
+                            + "?error=ACCOUNT_INACTIVE"
+                            + "&message=" + encode("오랫동안 로그인하지 않아 휴면 상태로 전환된 계정입니다.")
+            );
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.BANNED) {
+            response.sendRedirect(
+                    frontendBaseUrl + "/oauth2/redirect"
+                            + "?error=ACCOUNT_BANNED"
+                            + "&message=" + encode("정지된 계정은 로그인할 수 없습니다.")
+            );
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.DELETED) {
+            response.sendRedirect(
+                    frontendBaseUrl + "/oauth2/redirect"
+                            + "?error=ACCOUNT_DELETED"
+                            + "&message=" + encode("탈퇴한 계정은 로그인할 수 없습니다.")
+            );
+            return;
+        }
+
+        member.recordLogin();
 
         String accessToken = jwtProvider.createAccessToken(member.getId());
         String refreshToken = jwtProvider.createRefreshToken(member.getId());
@@ -225,6 +260,16 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     // 문자열 변환
     private String value(Object value) {
         return value != null ? String.valueOf(value) : null;
+    }
+
+    // 휴면 전환 대상 여부 확인
+    private boolean isDormantTarget(Member member) {
+        LocalDateTime baseDateTime = member.getLastLoginAt() != null
+                ? member.getLastLoginAt()
+                : member.getCreatedAt();
+
+        return baseDateTime != null
+                && baseDateTime.isBefore(LocalDateTime.now().minusMonths(DORMANT_MONTHS));
     }
 
     // OAuth 회원 정보

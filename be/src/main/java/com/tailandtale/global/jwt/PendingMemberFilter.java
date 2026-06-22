@@ -35,7 +35,7 @@ public class PendingMemberFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (!isApiRequest(request) || isPendingAllowedRequest(request) || authentication == null) {
+        if (!isApiRequest(request) || authentication == null) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -49,8 +49,33 @@ public class PendingMemberFilter extends OncePerRequestFilter {
 
         Member member = memberRepository.findById(memberId).orElse(null);
 
-        if (member != null && member.getStatus() == MemberStatus.PENDING) {
+        if (member == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.PENDING && isPendingAllowedRequest(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.PENDING) {
             writePendingResponse(response);
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.INACTIVE) {
+            writeBlockedResponse(response, 423, "LOCKED", "오랫동안 로그인하지 않아 휴면 상태로 전환된 계정입니다.");
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.BANNED) {
+            writeBlockedResponse(response, 403, "FORBIDDEN", "정지된 계정은 이용할 수 없습니다.");
+            return;
+        }
+
+        if (member.getStatus() == MemberStatus.DELETED) {
+            writeBlockedResponse(response, 403, "FORBIDDEN", "탈퇴한 계정은 이용할 수 없습니다.");
             return;
         }
 
@@ -87,5 +112,18 @@ public class PendingMemberFilter extends OncePerRequestFilter {
         response.getWriter().write("""
                 {"status":403,"error":"FORBIDDEN","message":"추가 정보를 먼저 입력해주세요."}
                 """);
+    }
+
+    // 상태 제한 회원 차단 응답 작성
+    private void writeBlockedResponse(HttpServletResponse response, int status, String error, String message) throws IOException {
+        response.setStatus(status);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(String.format(
+                "{\"status\":%d,\"error\":\"%s\",\"message\":\"%s\"}",
+                status,
+                error,
+                message
+        ));
     }
 }

@@ -5,9 +5,9 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import RegionSelect from "../components/common/RegionSelect";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
-import { updateMyProfile, getMyDashboard } from "../api/member";
+import { updateMyProfile, getMyDashboard, verifyMyPassword, withdrawMyAccount } from "../api/member";
 import { cancelMyWalkParticipation } from "../api/walk";
-import { getAccessToken } from "../utils/token";
+import { clearTokens, getAccessToken } from "../utils/token";
 import { isCompleteRegionValue } from "../constants/regions";
 import { formatDateTime, formatDogSize, formatParticipantStatus } from "../utils/walkFormat";
 
@@ -88,6 +88,7 @@ export default function MyPage() {
     // 요청 상태
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
 
     // 마이페이지 데이터 조회
     const fetchMyPageData = useCallback(async () => {
@@ -204,6 +205,41 @@ export default function MyPage() {
         }
     };
 
+    // 회원 탈퇴
+    const handleWithdraw = async () => {
+        const password = window.prompt("회원 탈퇴를 위해 비밀번호를 입력해주세요.");
+
+        if (password === null) {
+            return;
+        }
+
+        if (!password.trim()) {
+            alert("비밀번호를 입력해주세요.");
+            return;
+        }
+
+        try {
+            setIsWithdrawing(true);
+
+            await verifyMyPassword({ password });
+
+            if (!window.confirm("정말 탈퇴하시겠습니까? 탈퇴 후에는 계정을 다시 사용할 수 없습니다.")) {
+                return;
+            }
+
+            await withdrawMyAccount({ password });
+
+            clearTokens();
+            alert("회원 탈퇴가 완료되었습니다.");
+            window.location.replace("/");
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "회원 탈퇴에 실패했습니다.");
+        } finally {
+            setIsWithdrawing(false);
+        }
+    };
+
     // 케어 페이지 이동
     const moveCarePage = (tab, dogId) => {
         const params = new URLSearchParams({ tab });
@@ -257,8 +293,10 @@ export default function MyPage() {
                         <ProfileForm
                             form={form}
                             isSubmitting={isSubmitting}
+                            isWithdrawing={isWithdrawing}
                             onChange={handleChange}
                             onSubmit={handleSubmit}
+                            onWithdraw={handleWithdraw}
                         />
 
                         <div className="grid content-start gap-8 self-start">
@@ -534,7 +572,7 @@ function DashboardTabs({ activeTab, onChange }) {
 }
 
 // 내 정보 수정 폼
-function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
+function ProfileForm({ form, isSubmitting, isWithdrawing, onChange, onSubmit, onWithdraw }) {
     return (
         <form onSubmit={onSubmit} className="h-fit border border-gray-200 p-6">
             <div className="mb-6">
@@ -596,6 +634,20 @@ function ProfileForm({ form, isSubmitting, onChange, onSubmit }) {
             >
                 {isSubmitting ? "저장 중..." : "정보 저장"}
             </button>
+
+            <div className="mt-6 border-t border-gray-100 pt-5">
+                <p className="text-xs leading-5 text-gray-400">
+                    탈퇴 시 계정 상태가 탈퇴로 전환되며, 이후 로그인할 수 없습니다.
+                </p>
+                <button
+                    type="button"
+                    onClick={onWithdraw}
+                    disabled={isWithdrawing}
+                    className="mt-3 h-11 w-full border border-red-100 text-sm font-bold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
+                >
+                    {isWithdrawing ? "탈퇴 처리 중..." : "회원 탈퇴"}
+                </button>
+            </div>
         </form>
     );
 }

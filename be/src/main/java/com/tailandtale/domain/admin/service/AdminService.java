@@ -86,6 +86,14 @@ public class AdminService {
 
         Member member = findMember(targetMemberId);
 
+        if (member.getStatus() == MemberStatus.DELETED) {
+            throw new CustomException(AdminErrorCode.DELETED_MEMBER_STATUS_CHANGE_DENIED);
+        }
+
+        if (request.getStatus() == MemberStatus.DELETED) {
+            throw new CustomException(AdminErrorCode.DELETED_MEMBER_STATUS_CHANGE_DENIED);
+        }
+
         member.changeStatus(request.getStatus());
 
         return AdminDto.MemberResponse.from(member);

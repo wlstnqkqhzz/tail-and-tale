@@ -23,7 +23,15 @@ const tabs = [
 const statusLabels = {
     PENDING: "추가 정보 대기",
     ACTIVE: "활성",
-    INACTIVE: "비활성",
+    INACTIVE: "휴면",
+    BANNED: "정지",
+    DELETED: "탈퇴",
+};
+
+const changeableStatusLabels = {
+    PENDING: "추가 정보 대기",
+    ACTIVE: "활성",
+    INACTIVE: "휴면",
     BANNED: "정지",
 };
 
@@ -53,11 +61,14 @@ export default function AdminPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     const [memberKeyword, setMemberKeyword] = useState("");
+    const [memberSearchKeyword, setMemberSearchKeyword] = useState("");
     const [memberStatus, setMemberStatus] = useState("");
     const [postKeyword, setPostKeyword] = useState("");
+    const [postSearchKeyword, setPostSearchKeyword] = useState("");
     const [postCategory, setPostCategory] = useState("");
     const [postSort, setPostSort] = useState("latest");
     const [commentKeyword, setCommentKeyword] = useState("");
+    const [commentSearchKeyword, setCommentSearchKeyword] = useState("");
 
     const fetchDashboard = useCallback(async () => {
         const response = await getAdminDashboard();
@@ -69,33 +80,33 @@ export default function AdminPage() {
             page: 0,
             size: 50,
             status: memberStatus || undefined,
-            keyword: memberKeyword.trim() || undefined,
+            keyword: memberSearchKeyword.trim() || undefined,
         });
 
         setMembers(response.data.members || []);
-    }, [memberKeyword, memberStatus]);
+    }, [memberSearchKeyword, memberStatus]);
 
     const fetchPosts = useCallback(async () => {
         const response = await getAdminCommunityPosts({
             page: 0,
             size: 50,
             category: postCategory || undefined,
-            keyword: postKeyword.trim() || undefined,
+            keyword: postSearchKeyword.trim() || undefined,
             sort: postSort,
         });
 
         setPosts(response.data.posts || []);
-    }, [postCategory, postKeyword, postSort]);
+    }, [postCategory, postSearchKeyword, postSort]);
 
     const fetchComments = useCallback(async () => {
         const response = await getAdminCommunityComments({
             page: 0,
             size: 50,
-            keyword: commentKeyword.trim() || undefined,
+            keyword: commentSearchKeyword.trim() || undefined,
         });
 
         setComments(response.data.comments || []);
-    }, [commentKeyword]);
+    }, [commentSearchKeyword]);
 
     const fetchActiveTab = useCallback(async () => {
         if (activeTab === "members") {
@@ -184,6 +195,18 @@ export default function AdminPage() {
             console.error(error);
             alert(error.response?.data?.message || "댓글 삭제에 실패했습니다.");
         }
+    };
+
+    const handleMemberSearch = () => {
+        setMemberSearchKeyword(memberKeyword);
+    };
+
+    const handlePostSearch = () => {
+        setPostSearchKeyword(postKeyword);
+    };
+
+    const handleCommentSearch = () => {
+        setCommentSearchKeyword(commentKeyword);
     };
 
     if (isAuthLoading || isLoading) {
@@ -276,7 +299,7 @@ export default function AdminPage() {
                             currentMemberId={member.memberId}
                             onKeywordChange={setMemberKeyword}
                             onStatusChange={setMemberStatus}
-                            onSearch={fetchMembers}
+                            onSearch={handleMemberSearch}
                             onMemberStatusChange={handleMemberStatusChange}
                         />
                     )}
@@ -290,7 +313,7 @@ export default function AdminPage() {
                             onKeywordChange={setPostKeyword}
                             onCategoryChange={setPostCategory}
                             onSortChange={setPostSort}
-                            onSearch={fetchPosts}
+                            onSearch={handlePostSearch}
                             onDelete={handleDeletePost}
                             onMoveDetail={(postId) => navigate(`/community/${postId}`)}
                         />
@@ -301,7 +324,7 @@ export default function AdminPage() {
                             comments={comments}
                             keyword={commentKeyword}
                             onKeywordChange={setCommentKeyword}
-                            onSearch={fetchComments}
+                            onSearch={handleCommentSearch}
                             onDelete={handleDeleteComment}
                             onMovePost={(postId) => navigate(`/community/${postId}`)}
                         />
@@ -337,6 +360,11 @@ function MemberAdminSection({
                 <input
                     value={keyword}
                     onChange={(event) => onKeywordChange(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            onSearch();
+                        }
+                    }}
                     className="input"
                     placeholder="이메일, 닉네임, 실명 검색"
                 />
@@ -378,13 +406,17 @@ function MemberAdminSection({
                                 <td className="px-5 py-4">
                                     <select
                                         value={item.status}
-                                        disabled={item.memberId === currentMemberId}
+                                        disabled={item.memberId === currentMemberId || item.status === "DELETED"}
                                         onChange={(event) => onMemberStatusChange(item.memberId, event.target.value)}
                                         className="h-10 border border-gray-200 px-3 text-sm font-bold disabled:bg-gray-100 disabled:text-gray-400"
                                     >
-                                        {Object.entries(statusLabels).map(([value, label]) => (
-                                            <option key={value} value={value}>{label}</option>
-                                        ))}
+                                        {item.status === "DELETED" ? (
+                                            <option value="DELETED">탈퇴</option>
+                                        ) : (
+                                            Object.entries(changeableStatusLabels).map(([value, label]) => (
+                                                <option key={value} value={value}>{label}</option>
+                                            ))
+                                        )}
                                     </select>
                                 </td>
                                 <td className="px-5 py-4 text-gray-400">{formatDateTime(item.createdAt)}</td>
@@ -415,6 +447,11 @@ function PostAdminSection({
                 <input
                     value={keyword}
                     onChange={(event) => onKeywordChange(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            onSearch();
+                        }
+                    }}
                     className="input"
                     placeholder="제목, 내용, 작성자 검색"
                 />
@@ -465,6 +502,11 @@ function CommentAdminSection({ comments, keyword, onKeywordChange, onSearch, onD
                 <input
                     value={keyword}
                     onChange={(event) => onKeywordChange(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            onSearch();
+                        }
+                    }}
                     className="input"
                     placeholder="댓글, 게시글 제목, 작성자 검색"
                 />

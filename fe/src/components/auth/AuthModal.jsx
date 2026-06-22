@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { redirectToOAuth } from "../../api/auth";
-import { login, signup } from "../../api/member";
+import { login, reactivateDormantAccount, signup } from "../../api/member";
 import RegionSelect from "../common/RegionSelect";
 import { isCompleteRegionValue } from "../../constants/regions";
 import { useModalClose } from "../../hooks/useModalClose";
@@ -18,6 +18,7 @@ export default function AuthModal({ onClose }) {
         email: "",
         password: "",
     });
+    const [dormantLoginForm, setDormantLoginForm] = useState(null);
 
     // 회원가입 폼 상태
     const [signupForm, setSignupForm] = useState({
@@ -86,7 +87,40 @@ export default function AuthModal({ onClose }) {
             window.location.reload();
         } catch (error) {
             console.error(error);
+            if (isDormantAccountError(error)) {
+                setDormantLoginForm({
+                    email: loginForm.email.trim(),
+                    password: loginForm.password,
+                });
+                return;
+            }
+
             alert(error.response?.data?.message || "로그인에 실패했습니다.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // 휴면 계정 재활성화
+    const handleReactivateDormantAccount = async () => {
+        if (!dormantLoginForm) {
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+
+            await reactivateDormantAccount(dormantLoginForm);
+
+            alert("계정이 다시 활성화되었습니다. 다시 로그인해주세요.");
+            setDormantLoginForm(null);
+            setLoginForm({
+                email: dormantLoginForm.email,
+                password: "",
+            });
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "계정 활성화에 실패했습니다.");
         } finally {
             setIsSubmitting(false);
         }
@@ -162,8 +196,41 @@ export default function AuthModal({ onClose }) {
                     {mode === "login" ? "시작하기" : "회원가입"}
                 </h2>
 
-                {/* 로그인 화면 */}
-                {mode === "login" ? (
+                {/* 휴면 계정 안내 화면 */}
+                {dormantLoginForm ? (
+                    <div className="grid gap-6">
+                        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                            <p className="text-sm font-bold tracking-[0.25em] text-emerald-700">
+                                DORMANT ACCOUNT
+                            </p>
+                            <h3 className="mt-4 text-2xl font-bold leading-tight text-gray-950">
+                                휴면 계정입니다.
+                            </h3>
+                            <p className="mt-4 text-sm leading-6 text-gray-500">
+                                오랫동안 로그인하지 않아 휴면 상태로 전환된 계정입니다.
+                                <br />
+                                계정을 다시 활성화하시겠습니까?
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleReactivateDormantAccount}
+                            disabled={isSubmitting}
+                            className={`h-12 rounded-xl bg-black font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-300 ${buttonEffect}`}
+                        >
+                            {isSubmitting ? "활성화 중..." : "계정 활성화"}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setDormantLoginForm(null)}
+                            className="h-11 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 transition hover:border-black hover:text-black"
+                        >
+                            로그인으로 돌아가기
+                        </button>
+                    </div>
+                ) : mode === "login" ? (
                     <form onSubmit={handleLogin} className="flex flex-col gap-3">
                         {/* 이메일 */}
                         <input
@@ -331,6 +398,13 @@ export default function AuthModal({ onClose }) {
             </div>
         </div>
     );
+}
+
+function isDormantAccountError(error) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message || "";
+
+    return status === 423 || message.includes("휴면");
 }
 
 function validateSignupForm(form) {

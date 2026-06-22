@@ -254,7 +254,7 @@ export default function HomePage() {
     // 로그인 후 화면
     const renderMemberHome = () => (
         <main className="bg-white pt-20">
-            <section className="mx-auto max-w-7xl px-8 pb-10 pt-14">
+            <section className="mx-auto max-w-[1500px] px-8 pb-10 pt-14">
                 <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <h1 className="text-5xl font-semibold leading-tight tracking-normal text-gray-950">
@@ -272,7 +272,7 @@ export default function HomePage() {
                         </p>
                     </div>
 
-                    <div className="text-sm text-gray-500">
+                    <div className="shrink-0 pb-1 text-right text-sm text-gray-500">
                         <span className="mr-2 font-serif italic text-emerald-600">notice</span>
                         실제 모집글과 오늘의 기록을 한 번에 확인해보세요
                     </div>
@@ -555,7 +555,9 @@ function WalkFeatureSlide({ walks, isLoading, onMoveToWalks, onSelect }) {
                 >
                     <p className="text-xs font-bold tracking-[0.35em] text-gray-300">NEXT WALK</p>
                     <h3 className="mt-5 text-3xl font-bold leading-tight text-gray-300">
-                        새로운 산책 모집글을 기다리고 있어요.
+                        새로운 산책 모집글을
+                        <br/>
+                        기다리고 있어요.
                     </h3>
                 </div>
             ))}

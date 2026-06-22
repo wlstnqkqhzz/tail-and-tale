@@ -12,6 +12,14 @@ export default function OAuth2RedirectPage() {
         const accessToken = params.get("accessToken");
         const refreshToken = params.get("refreshToken");
         const status = params.get("status");
+        const error = params.get("error");
+        const message = params.get("message");
+
+        if (error) {
+            alert(message || "로그인에 실패했습니다.");
+            navigate("/");
+            return;
+        }
 
         if (!accessToken) {
             alert("로그인에 실패했습니다.");

@@ -76,6 +76,15 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private MemberStatus status = MemberStatus.ACTIVE;
 
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @Column(name = "inactive_at")
+    private LocalDateTime inactiveAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // =========================
     // 생성 메서드
     // =========================
@@ -157,15 +166,43 @@ public class Member extends BaseEntity {
     // 회원 활성화 처리
     public void activate() {
         this.status = MemberStatus.ACTIVE;
+        this.inactiveAt = null;
     }
 
     // 회원 비활성화 처리
     public void deactivate() {
         this.status = MemberStatus.INACTIVE;
+        this.inactiveAt = LocalDateTime.now();
+    }
+
+    // 휴면 회원 재활성화 처리
+    public void reactivateDormantAccount() {
+        this.status = MemberStatus.ACTIVE;
+        this.inactiveAt = null;
+        this.lastLoginAt = LocalDateTime.now();
+    }
+
+    // 회원 탈퇴 처리
+    public void withdraw() {
+        this.status = MemberStatus.DELETED;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    // 로그인 일시 갱신
+    public void recordLogin() {
+        this.lastLoginAt = LocalDateTime.now();
     }
 
     // 관리자 회원 상태 변경
     public void changeStatus(MemberStatus status) {
         this.status = status;
+
+        if (status == MemberStatus.ACTIVE) {
+            this.inactiveAt = null;
+        }
+
+        if (status == MemberStatus.INACTIVE) {
+            this.inactiveAt = LocalDateTime.now();
+        }
     }
 }

@@ -12,6 +12,7 @@ let pendingRequests = [];
 const REISSUE_SKIP_URLS = [
     "/api/members/login",
     "/api/members/signup",
+    "/api/members/reactivate",
     "/api/members/reissue",
     "/api/members/logout",
 ];

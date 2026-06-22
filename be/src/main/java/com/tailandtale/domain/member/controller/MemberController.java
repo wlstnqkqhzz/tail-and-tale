@@ -46,6 +46,38 @@ public class MemberController {
         return ResponseEntity.ok(memberService.completeProfile(memberId, request));
     }
 
+    // 내 정보 수정
+    @PatchMapping("/me")
+    public ResponseEntity<MemberDto.DetailResponse> updateMyProfile(@Valid @RequestBody MemberDto.UpdateRequest request) {
+        Long memberId = (Long) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        return ResponseEntity.ok(memberService.updateMyProfile(memberId, request));
+    }
+
+    // 내 비밀번호 확인
+    @PostMapping("/me/password/verify")
+    public ResponseEntity<Void> verifyMyPassword(@Valid @RequestBody MemberDto.PasswordConfirmRequest request) {
+        Long memberId = (Long) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        memberService.verifyMyPassword(memberId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 회원 탈퇴
+    @PatchMapping("/me/withdraw")
+    public ResponseEntity<Void> withdraw(@Valid @RequestBody MemberDto.PasswordConfirmRequest request) {
+        Long memberId = (Long) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        memberService.withdraw(memberId, request);
+        return ResponseEntity.noContent().build();
+    }
+
     // 내 정보 조회
     @GetMapping("/me")
     public ResponseEntity<MemberDto.DetailResponse> getMyInfo() {
@@ -70,6 +102,13 @@ public class MemberController {
     @PostMapping("/reissue")
     public ResponseEntity<LoginFormDto.TokenResponse> reissue(@Valid @RequestBody LoginFormDto.ReissueRequest request) {
         return ResponseEntity.ok(memberService.reissue(request));
+    }
+
+    // 휴면 계정 재활성화
+    @PostMapping("/reactivate")
+    public ResponseEntity<Void> reactivateDormantAccount(@Valid @RequestBody LoginFormDto.LoginRequest request) {
+        memberService.reactivateDormantAccount(request);
+        return ResponseEntity.noContent().build();
     }
 
     // 로그아웃

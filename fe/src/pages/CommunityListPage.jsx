@@ -40,6 +40,16 @@ export default function CommunityListPage() {
     const [category, setCategory] = useState(searchParams.get("category") || "");
     const [sort, setSort] = useState(searchParams.get("sort") || "latest");
     const [keyword, setKeyword] = useState(searchParams.get("keyword") || "");
+    const sortedPosts = [...posts].sort((firstPost, secondPost) => {
+        if (firstPost.category === "NOTICE" && secondPost.category !== "NOTICE") {
+            return -1;
+        }
+        if (firstPost.category !== "NOTICE" && secondPost.category === "NOTICE") {
+            return 1;
+        }
+
+        return 0;
+    });
 
     // 커뮤니티 게시글 목록 조회
     const fetchPosts = useCallback(async (params = {}) => {
@@ -236,41 +246,73 @@ export default function CommunityListPage() {
                                 </thead>
 
                                 <tbody>
-                                {posts.map((post) => (
-                                    <tr
-                                        key={post.communityPostId}
-                                        onClick={() => navigate(`/community/${post.communityPostId}`)}
-                                        className="cursor-pointer border-b border-gray-100 transition hover:bg-gray-50"
-                                    >
-                                        <td className="px-4 py-4 text-gray-500">
-                                            {categoryLabels[post.category] || post.category}
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex min-w-0 items-center gap-2">
-                                                <span className="truncate font-bold text-gray-950">
-                                                    {post.title}
-                                                </span>
-                                                {post.commentCount > 0 && (
-                                                    <span className="shrink-0 text-xs font-bold text-emerald-600">
-                                                        [{post.commentCount}]
+                                {sortedPosts.map((post) => {
+                                    const isNotice = post.category === "NOTICE";
+
+                                    return (
+                                        <tr
+                                            key={post.communityPostId}
+                                            onClick={() => navigate(`/community/${post.communityPostId}`)}
+                                            className={`cursor-pointer border-b transition ${
+                                                isNotice
+                                                    ? "border-gray-200 bg-gray-100 hover:bg-gray-200/80"
+                                                    : "border-gray-100 hover:bg-gray-50"
+                                            }`}
+                                        >
+                                            <td
+                                                className={`px-4 py-4 ${
+                                                    isNotice ? "font-bold text-gray-950" : "text-gray-500"
+                                                }`}
+                                            >
+                                                {categoryLabels[post.category] || post.category}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <span
+                                                        className={`truncate font-bold ${
+                                                            isNotice ? "text-gray-950" : "text-gray-950"
+                                                        }`}
+                                                    >
+                                                        {post.title}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="truncate px-4 py-4 text-gray-600">
-                                            {post.nickname}
-                                        </td>
-                                        <td className="px-4 py-4 text-center text-gray-500">
-                                            {formatDateOnly(post.createdAt)}
-                                        </td>
-                                        <td className="px-4 py-4 text-center text-gray-500">
-                                            {post.viewCount}
-                                        </td>
-                                        <td className="px-4 py-4 text-center text-gray-500">
-                                            {post.likeCount}
-                                        </td>
-                                    </tr>
-                                ))}
+                                                    {post.commentCount > 0 && (
+                                                        <span className="shrink-0 text-xs font-bold text-emerald-600">
+                                                            [{post.commentCount}]
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td
+                                                className={`truncate px-4 py-4 ${
+                                                    isNotice ? "font-semibold text-gray-700" : "text-gray-600"
+                                                }`}
+                                            >
+                                                {post.nickname}
+                                            </td>
+                                            <td
+                                                className={`px-4 py-4 text-center ${
+                                                    isNotice ? "font-semibold text-gray-500" : "text-gray-500"
+                                                }`}
+                                            >
+                                                {formatDateOnly(post.createdAt)}
+                                            </td>
+                                            <td
+                                                className={`px-4 py-4 text-center ${
+                                                    isNotice ? "font-semibold text-gray-500" : "text-gray-500"
+                                                }`}
+                                            >
+                                                {post.viewCount}
+                                            </td>
+                                            <td
+                                                className={`px-4 py-4 text-center ${
+                                                    isNotice ? "font-semibold text-gray-500" : "text-gray-500"
+                                                }`}
+                                            >
+                                                {post.likeCount}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 </tbody>
                             </table>
                         </div>

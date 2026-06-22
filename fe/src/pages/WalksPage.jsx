@@ -139,7 +139,9 @@ export default function WalksPage() {
                             </h1>
                             <p className="mt-5 max-w-2xl text-base leading-7 text-gray-500">
                                 지역, 반려견 크기, 시간대를 기준으로 산책 게시글을 탐색하고
-                                마음에 드는 일정의 상세 페이지에서 참여를 신청할 수 있습니다.
+                                마음에 드는
+                                <br />
+                                일정의 상세 페이지에서 참여를 신청할 수 있습니다.
                             </p>
                         </div>
 
