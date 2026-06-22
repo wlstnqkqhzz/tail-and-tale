@@ -13,31 +13,22 @@ import { formatDateTime, formatDogSize } from "../utils/walkFormat";
 
 // 메인 랜딩 페이지
 
-const keywords = [
-    "오늘 산책",
-    "진주 산책",
-    "소형견 모임",
-    "중형견 친구",
-    "대형견 산책",
-    "강변 코스",
-    "공원 산책",
-    "저녁 산책",
-    "주말 메이트",
-    "낯가림 적음",
-    "활발한 친구",
-    "천천히 걷기",
-    "인증 반려견",
-    "산책 일기",
-    "건강 기록",
-    "감정 다이어리",
-    "초보 집사",
-    "반려견 케어",
-    "동네 친구",
-    "산책 루틴",
-    "지역 산책",
-    "긴 산책",
-    "사진 남기기",
-    "우리집 반려동물",
+const shortcutMenus = [
+    { label: "산책 모집", path: "/walks" },
+    { label: "커뮤니티", path: "/community" },
+    { label: "케어 기록", path: "/care" },
+    { label: "AI 결산", path: "/care?tab=review" },
+    { label: "인기 산책", path: "/walks?recruitableOnly=true" },
+    {
+        label: "내 지역",
+        getPath: (member) => (member?.region ? `/walks?region=${encodeURIComponent(member.region)}` : "/walks"),
+    },
+    { label: "인증 반려견", path: "/dogs" },
+    { label: "우리 강아지", path: "/dogs" },
+    { label: "산책 후기", path: "/community?category=WALK_REVIEW" },
+    { label: "감정 일기", path: "/care?tab=emotion" },
+    { label: "건강 체크", path: "/care?tab=health" },
+    { label: "마이페이지", path: "/profile-complete" },
 ];
 
 export default function HomePage() {
@@ -109,10 +100,12 @@ export default function HomePage() {
     ), [dogs]);
 
     useEffect(() => {
-        if (featuredWalks.length > 0 && activeSlide >= featuredWalks.length) {
+        const homeSlideCount = 4;
+
+        if (activeSlide >= homeSlideCount) {
             setActiveSlide(0);
         }
-    }, [activeSlide, featuredWalks.length]);
+    }, [activeSlide]);
 
     // 로그인 후 홈 화면 데이터 조회
     useEffect(() => {
@@ -215,9 +208,11 @@ export default function HomePage() {
         navigate("/walks");
     };
 
-    // 키워드 검색
-    const searchKeyword = (keyword) => {
-        navigate(`/walks?keyword=${encodeURIComponent(keyword)}`);
+    // 메인 바로가기 이동
+    const moveToShortcut = (menu) => {
+        const path = menu.getPath ? menu.getPath(member) : menu.path;
+
+        navigate(path);
     };
 
     // 로그인 전 화면
@@ -284,87 +279,50 @@ export default function HomePage() {
                 </div>
             </section>
 
-            <FeaturedWalkShowcase
-                walks={featuredWalks}
+            <HomeFeatureShowcase
+                featuredWalks={featuredWalks}
+                popularWalks={popularWalks}
+                regionWalks={regionWalks}
+                popularPosts={popularPosts}
+                primaryDog={primaryDog}
+                dogs={dogs}
+                verifiedDogCount={verifiedDogCount}
+                careSummary={careSummary}
+                unreadNotificationCount={unreadNotificationCount}
                 activeSlide={activeSlide}
                 setActiveSlide={setActiveSlide}
                 isLoading={isHomeDataLoading}
+                isCareSummaryLoading={isCareSummaryLoading}
+                member={member}
                 onMoveToWalks={moveToWalks}
-                onSelect={(schedule) => navigate(`/walks/${schedule.walkScheduleId}`)}
-            />
-
-            <section className="mx-auto grid max-w-7xl gap-6 px-8 py-14 lg:grid-cols-3">
-                <TodayCareCard
-                    dog={primaryDog}
-                    summary={careSummary}
-                    isLoading={isCareSummaryLoading}
-                    onMoveToCare={() => navigate("/care")}
-                    onMoveToDogs={() => navigate("/dogs")}
-                />
-
-                <DogSummaryCard
-                    dogs={dogs}
-                    primaryDog={primaryDog}
-                    verifiedDogCount={verifiedDogCount}
-                    onMoveToDogs={() => navigate("/dogs")}
-                />
-
-                <NotificationSummaryCard
-                    unreadCount={unreadNotificationCount}
-                    onMoveToNotifications={() => navigate("/profile-complete")}
-                />
-            </section>
-
-            <section className="mx-auto grid max-w-7xl gap-6 px-8 pb-16 lg:grid-cols-2">
-                <HomeWalkSection
-                    eyebrow="POPULAR WALK"
-                    title="신청이 많은 산책 모집글"
-                    description="참여자와 대기 신청이 많은 산책을 먼저 모아봤어요."
-                    schedules={popularWalks}
-                    isLoading={isHomeDataLoading}
-                    emptyText="아직 신청이 많은 산책 모집글이 없습니다."
-                    onMoveToWalks={() => navigate("/walks")}
-                    onSelect={(schedule) => navigate(`/walks/${schedule.walkScheduleId}`)}
-                />
-
-                <HomeWalkSection
-                    eyebrow="NEARBY WALK"
-                    title={`${member?.region || "내 지역"} 기반 모집글`}
-                    description="내 거주지역과 가까운 산책 모집글을 확인해보세요."
-                    schedules={regionWalks}
-                    isLoading={isHomeDataLoading}
-                    emptyText="내 지역과 맞는 산책 모집글이 아직 없습니다."
-                    onMoveToWalks={() => navigate(member?.region ? `/walks?region=${encodeURIComponent(member.region)}` : "/walks")}
-                    onSelect={(schedule) => navigate(`/walks/${schedule.walkScheduleId}`)}
-                />
-            </section>
-
-            <PopularCommunitySection
-                posts={popularPosts}
-                isLoading={isHomeDataLoading}
+                onMoveToCare={() => navigate("/care")}
+                onMoveToDogs={() => navigate("/dogs")}
+                onMoveToProfile={() => navigate("/profile-complete")}
                 onMoveToCommunity={() => navigate("/community")}
-                onSelect={(post) => navigate(`/community/${post.communityPostId}`)}
+                onMoveToNearbyWalks={() => navigate(member?.region ? `/walks?region=${encodeURIComponent(member.region)}` : "/walks")}
+                onSelect={(schedule) => navigate(`/walks/${schedule.walkScheduleId}`)}
+                onSelectPost={(post) => navigate(`/community/${post.communityPostId}`)}
             />
 
-            <section className="mx-auto max-w-6xl px-8 py-24">
+            <section className="mx-auto max-w-5xl px-8 py-20">
                 <div className="text-center">
                     <p className="text-lg font-bold tracking-[0.55em] text-gray-950">
-                        WALK KEYWORD
+                        QUICK MENU
                     </p>
                     <p className="mt-4 text-sm text-gray-400">
-                        키워드로 분류된 다양한 산책 모음
+                        자주 쓰는 기능을 빠르게 열어보세요
                     </p>
                 </div>
 
-                <div className="mt-12 grid grid-cols-2 border border-gray-200 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8">
-                    {keywords.map((keyword) => (
+                <div className="mt-10 grid grid-cols-2 border border-gray-200 sm:grid-cols-4">
+                    {shortcutMenus.map((menu) => (
                         <button
-                            key={keyword}
+                            key={menu.label}
                             type="button"
-                            onClick={() => searchKeyword(keyword)}
-                            className="flex aspect-[1.25/1] items-center justify-center border-b border-r border-gray-200 px-3 text-center text-sm leading-6 text-gray-600 transition hover:bg-gray-950 hover:text-white"
+                            onClick={() => moveToShortcut(menu)}
+                            className="flex aspect-[2.5/1] items-center justify-center border-b border-r border-gray-200 px-3 text-center text-sm font-medium leading-6 text-gray-600 transition hover:bg-gray-950 hover:text-white"
                         >
-                            {keyword}
+                            {menu.label}
                         </button>
                     ))}
                 </div>
@@ -391,83 +349,214 @@ export default function HomePage() {
     );
 }
 
-function FeaturedWalkShowcase({ walks, activeSlide, setActiveSlide, isLoading, onMoveToWalks, onSelect }) {
-    const visiblePanelCount = 3;
-    const panelWidth = 480;
-    const maxSlideIndex = Math.max(walks.length - visiblePanelCount, 0);
-    const carouselTranslateX = Math.min(activeSlide, maxSlideIndex) * panelWidth;
+function HomeFeatureShowcase({
+    featuredWalks,
+    popularWalks,
+    regionWalks,
+    popularPosts,
+    primaryDog,
+    dogs,
+    verifiedDogCount,
+    careSummary,
+    unreadNotificationCount,
+    activeSlide,
+    setActiveSlide,
+    isLoading,
+    isCareSummaryLoading,
+    member,
+    onMoveToWalks,
+    onMoveToCare,
+    onMoveToDogs,
+    onMoveToProfile,
+    onMoveToCommunity,
+    onMoveToNearbyWalks,
+    onSelect,
+    onSelectPost,
+}) {
+    const slides = [
+        { key: "walk", label: "추천 산책" },
+        { key: "care", label: "오늘 케어" },
+        { key: "walks", label: "모집 현황" },
+        { key: "community", label: "인기글" },
+    ];
 
     return (
         <section className="mx-auto max-w-[1500px] px-8">
             <div className="mx-auto max-w-[1440px] overflow-hidden border border-gray-200 bg-white">
-                {isLoading ? (
-                    <div className="flex h-[520px] items-center justify-center text-sm text-gray-400">
-                        추천 산책을 불러오는 중...
-                    </div>
-                ) : walks.length === 0 ? (
-                    <div className="flex h-[420px] flex-col items-center justify-center gap-5 px-6 text-center">
-                        <p className="text-xs font-bold tracking-[0.35em] text-emerald-600">TODAY WALK</p>
-                        <h2 className="text-3xl font-bold text-gray-950">아직 추천할 산책 모집글이 없어요.</h2>
-                        <p className="text-sm text-gray-500">첫 산책 모집글을 작성하거나 전체 산책 목록을 둘러보세요.</p>
-                        <button
-                            type="button"
-                            onClick={onMoveToWalks}
-                            className="h-12 rounded-full bg-black px-7 text-sm font-bold text-white transition hover:opacity-80"
-                        >
-                            산책 게시판 보기
-                        </button>
-                    </div>
-                ) : (
-                    <div
-                        className="flex h-[520px] transition-transform duration-500 ease-out"
-                        style={{ transform: `translateX(-${carouselTranslateX}px)` }}
-                    >
-                        {walks.map((walk, index) => (
-                            <WalkCarouselPanel
-                                key={walk.walkScheduleId}
-                                walk={walk}
-                                index={index}
-                                onClick={() => onSelect(walk)}
-                            />
-                        ))}
+                <div
+                    className="flex transition-transform duration-500 ease-out"
+                    style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+                >
+                    <FeatureSlide>
+                        <WalkFeatureSlide
+                            walks={featuredWalks}
+                            isLoading={isLoading}
+                            onMoveToWalks={onMoveToWalks}
+                            onSelect={onSelect}
+                        />
+                    </FeatureSlide>
 
-                        {walks.length < visiblePanelCount && Array.from({ length: visiblePanelCount - walks.length }).map((_, index) => (
-                            <div
-                                key={`empty-panel-${index}`}
-                                className="flex h-[520px] w-[480px] shrink-0 flex-col justify-center bg-gray-50 px-12"
-                            >
-                                <p className="text-xs font-bold tracking-[0.35em] text-gray-300">NEXT WALK</p>
-                                <h3 className="mt-5 text-3xl font-bold leading-tight text-gray-300">
-                                    새로운 산책 모집글을 기다리고 있어요.
-                                </h3>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                    <FeatureSlide>
+                        <div className="grid h-full gap-6 p-8 lg:grid-cols-3">
+                            <TodayCareCard
+                                dog={primaryDog}
+                                summary={careSummary}
+                                isLoading={isCareSummaryLoading}
+                                onMoveToCare={onMoveToCare}
+                                onMoveToDogs={onMoveToDogs}
+                            />
+
+                            <DogSummaryCard
+                                dogs={dogs}
+                                primaryDog={primaryDog}
+                                verifiedDogCount={verifiedDogCount}
+                                onMoveToDogs={onMoveToDogs}
+                            />
+
+                            <NotificationSummaryCard
+                                unreadCount={unreadNotificationCount}
+                                onMoveToNotifications={onMoveToProfile}
+                            />
+                        </div>
+                    </FeatureSlide>
+
+                    <FeatureSlide>
+                        <div className="grid h-full gap-6 p-8 lg:grid-cols-2">
+                            <HomeWalkSection
+                                eyebrow="POPULAR WALK"
+                                title="신청이 많은 산책 모집글"
+                                description="참여자와 대기 신청이 많은 산책을 먼저 모아봤어요."
+                                schedules={popularWalks.slice(0, 2)}
+                                isLoading={isLoading}
+                                emptyText="아직 신청이 많은 산책 모집글이 없습니다."
+                                onMoveToWalks={onMoveToWalks}
+                                onSelect={onSelect}
+                            />
+
+                            <HomeWalkSection
+                                eyebrow="NEARBY WALK"
+                                title={`${member?.region || "내 지역"} 기반 모집글`}
+                                description="내 거주지역과 가까운 산책 모집글을 확인해보세요."
+                                schedules={regionWalks.slice(0, 2)}
+                                isLoading={isLoading}
+                                emptyText="내 지역과 맞는 산책 모집글이 아직 없습니다."
+                                onMoveToWalks={onMoveToNearbyWalks}
+                                onSelect={onSelect}
+                            />
+                        </div>
+                    </FeatureSlide>
+
+                    <FeatureSlide>
+                        <CommunityPopularSlide
+                            posts={popularPosts}
+                            isLoading={isLoading}
+                            onMoveToCommunity={onMoveToCommunity}
+                            onSelect={onSelectPost}
+                        />
+                    </FeatureSlide>
+                </div>
             </div>
 
-            {walks.length > 1 && (
-                <div className="mx-auto mt-8 flex max-w-md items-center gap-5">
-                    <span className="w-8 text-right text-xs font-bold text-gray-950">
-                        {String(Math.min(activeSlide, maxSlideIndex) + 1).padStart(2, "0")}
-                    </span>
+            <div className="mx-auto mt-8 flex max-w-md items-center gap-5">
+                <span className="w-8 text-right text-xs font-bold text-gray-950">
+                    {String(activeSlide + 1).padStart(2, "0")}
+                </span>
 
-                    <input
-                        type="range"
-                        min="0"
-                        max={maxSlideIndex}
-                        value={Math.min(activeSlide, maxSlideIndex)}
-                        onChange={(event) => setActiveSlide(Number(event.target.value))}
-                        className="h-1 flex-1 cursor-pointer accent-black"
-                        aria-label="추천 산책 슬라이드"
-                    />
+                <input
+                    type="range"
+                    min="0"
+                    max={slides.length - 1}
+                    value={activeSlide}
+                    onChange={(event) => setActiveSlide(Number(event.target.value))}
+                    className="h-1 flex-1 cursor-pointer accent-black"
+                    aria-label="메인 홈 슬라이드"
+                />
 
-                    <span className="w-8 text-xs text-gray-300">
-                        {String(maxSlideIndex + 1).padStart(2, "0")}
-                    </span>
-                </div>
-            )}
+                <span className="w-8 text-xs text-gray-300">
+                    {String(slides.length).padStart(2, "0")}
+                </span>
+            </div>
+
+            <div className="mt-4 flex justify-center gap-2">
+                {slides.map((slide, index) => (
+                    <button
+                        key={slide.key}
+                        type="button"
+                        onClick={() => setActiveSlide(index)}
+                        className={`h-9 border px-4 text-xs font-bold transition ${
+                            activeSlide === index
+                                ? "border-gray-950 bg-gray-950 text-white"
+                                : "border-gray-200 text-gray-400 hover:border-gray-950 hover:text-gray-950"
+                        }`}
+                    >
+                        {slide.label}
+                    </button>
+                ))}
+            </div>
         </section>
+    );
+}
+
+function FeatureSlide({ children }) {
+    return (
+        <div className="h-[520px] min-w-full shrink-0 overflow-hidden">
+            {children}
+        </div>
+    );
+}
+
+function WalkFeatureSlide({ walks, isLoading, onMoveToWalks, onSelect }) {
+    const visiblePanelCount = 3;
+    const visibleWalks = walks.slice(0, visiblePanelCount);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                추천 산책을 불러오는 중...
+            </div>
+        );
+    }
+
+    if (visibleWalks.length === 0) {
+        return (
+            <div className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center">
+                <p className="text-xs font-bold tracking-[0.35em] text-emerald-600">TODAY WALK</p>
+                <h2 className="text-3xl font-bold text-gray-950">아직 추천할 산책 모집글이 없어요.</h2>
+                <p className="text-sm text-gray-500">첫 산책 모집글을 작성하거나 전체 산책 목록을 둘러보세요.</p>
+                <button
+                    type="button"
+                    onClick={onMoveToWalks}
+                    className="h-12 rounded-full bg-black px-7 text-sm font-bold text-white transition hover:opacity-80"
+                >
+                    산책 게시판 보기
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid h-full lg:grid-cols-3">
+            {visibleWalks.map((walk, index) => (
+                <WalkCarouselPanel
+                    key={walk.walkScheduleId}
+                    walk={walk}
+                    index={index}
+                    onClick={() => onSelect(walk)}
+                />
+            ))}
+
+            {visibleWalks.length < visiblePanelCount && Array.from({ length: visiblePanelCount - visibleWalks.length }).map((_, index) => (
+                <div
+                    key={`empty-panel-${index}`}
+                    className="flex h-full flex-col justify-center bg-gray-50 px-12"
+                >
+                    <p className="text-xs font-bold tracking-[0.35em] text-gray-300">NEXT WALK</p>
+                    <h3 className="mt-5 text-3xl font-bold leading-tight text-gray-300">
+                        새로운 산책 모집글을 기다리고 있어요.
+                    </h3>
+                </div>
+            ))}
+        </div>
     );
 }
 
@@ -482,7 +571,7 @@ function WalkCarouselPanel({ walk, index, onClick }) {
             <button
                 type="button"
                 onClick={onClick}
-                className="flex h-[520px] w-[480px] shrink-0 flex-col justify-center bg-gray-950 px-16 text-left text-white transition hover:bg-black"
+                className="flex h-full w-full flex-col justify-center bg-gray-950 px-16 text-left text-white transition hover:bg-black"
             >
                 <p className="text-sm text-gray-400">오늘 추천 산책</p>
                 <h2 className="mt-5 text-4xl font-bold leading-tight tracking-normal">
@@ -512,7 +601,7 @@ function WalkCarouselPanel({ walk, index, onClick }) {
             <button
                 type="button"
                 onClick={onClick}
-                className="flex h-[520px] w-[480px] shrink-0 flex-col items-center justify-center bg-gray-50 px-12 text-center transition hover:bg-gray-100"
+                className="flex h-full w-full flex-col items-center justify-center bg-gray-50 px-12 text-center transition hover:bg-gray-100"
             >
                 <div className="w-72 border border-gray-200 bg-white p-8 shadow-sm">
                     <p className="text-xs font-bold tracking-[0.35em] text-emerald-600">FEATURED</p>
@@ -536,7 +625,7 @@ function WalkCarouselPanel({ walk, index, onClick }) {
         <button
             type="button"
             onClick={onClick}
-            className="flex h-[520px] w-[480px] shrink-0 flex-col justify-end bg-white px-12 py-14 text-left transition hover:bg-gray-50"
+            className="flex h-full w-full flex-col justify-end bg-white px-12 py-14 text-left transition hover:bg-gray-50"
         >
             <div>
                 <div className="flex flex-wrap gap-2">
@@ -698,6 +787,60 @@ function MiniMetric({ label, value }) {
         <div className="border border-gray-100 p-3">
             <p className="text-xs font-bold text-gray-400">{label}</p>
             <p className="mt-2 text-xl font-bold text-gray-950">{value}</p>
+        </div>
+    );
+}
+
+function CommunityPopularSlide({ posts, isLoading, onMoveToCommunity, onSelect }) {
+    return (
+        <div className="flex h-full flex-col p-8">
+            <div className="flex items-end justify-between gap-6">
+                <div>
+                    <p className="text-xs font-bold tracking-[0.35em] text-emerald-600">COMMUNITY</p>
+                    <h2 className="mt-3 text-3xl font-bold text-gray-950">커뮤니티 인기글</h2>
+                    <p className="mt-3 text-sm text-gray-500">좋아요를 많이 받은 이야기를 먼저 확인해보세요.</p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onMoveToCommunity}
+                    className="h-11 shrink-0 border border-gray-200 px-5 text-sm font-bold transition hover:bg-gray-50"
+                >
+                    커뮤니티 보기
+                </button>
+            </div>
+
+            <div className="mt-8 grid flex-1 gap-4 md:grid-cols-2">
+                {isLoading ? (
+                    <div className="flex items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400 md:col-span-2">
+                        인기글을 불러오는 중...
+                    </div>
+                ) : posts.length === 0 ? (
+                    <div className="flex items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400 md:col-span-2">
+                        아직 커뮤니티 인기글이 없습니다.
+                    </div>
+                ) : (
+                    posts.slice(0, 4).map((post) => (
+                        <button
+                            key={post.communityPostId}
+                            type="button"
+                            onClick={() => onSelect(post)}
+                            className="border border-gray-200 p-5 text-left transition hover:border-gray-950 hover:shadow-lg"
+                        >
+                            <div className="flex items-center justify-between gap-4">
+                                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
+                                    {getCommunityCategoryLabel(post.category)}
+                                </span>
+                                <span className="text-xs text-gray-400">{formatDateOnly(post.createdAt)}</span>
+                            </div>
+                            <h3 className="mt-4 line-clamp-1 text-xl font-bold text-gray-950">{post.title}</h3>
+                            <p className="mt-4 text-sm text-gray-500">
+                                좋아요 {post.likeCount ?? 0} · 댓글 {post.commentCount ?? 0} · 조회 {post.viewCount ?? 0}
+                            </p>
+                        </button>
+                    ))
+                )}
+            </div>
         </div>
     );
 }
