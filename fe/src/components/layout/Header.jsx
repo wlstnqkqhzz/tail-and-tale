@@ -464,6 +464,9 @@ function getNotificationTargetPath(notification) {
     if (notification.targetType === "CHAT_ROOM") {
         return `/chat/rooms/${notification.targetId}`;
     }
+    if (notification.targetType === "BADGE") {
+        return "/profile-complete";
+    }
 
     return `/walks/${notification.targetId}`;
 }

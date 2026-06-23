@@ -7,5 +7,6 @@ public enum NotificationType {
     WALK_APPROVED,
     WALK_REJECTED,
     WALK_CANCELED,
-    CHAT_MESSAGE
+    CHAT_MESSAGE,
+    BADGE_EARNED
 }

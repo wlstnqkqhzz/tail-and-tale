@@ -120,12 +120,16 @@ public class MemberDto {
         private String introduction;
         private DogSize representativeDogSize;
         private Long walkParticipationCount;
+        private Integer trustScore;
+        private String trustLevel;
+        private List<TrustScoreDto.BadgeResponse> badges;
         private Boolean reportHistoryVisible;
 
         public static MiniProfileResponse from(
                 Member member,
                 DogSize representativeDogSize,
-                long walkParticipationCount
+                long walkParticipationCount,
+                TrustScoreDto.SummaryResponse trustScoreSummary
         ) {
             return MiniProfileResponse.builder()
                     .memberId(member.getId())
@@ -135,6 +139,9 @@ public class MemberDto {
                     .introduction(member.getIntroduction())
                     .representativeDogSize(representativeDogSize)
                     .walkParticipationCount(walkParticipationCount)
+                    .trustScore(trustScoreSummary.getTrustScore())
+                    .trustLevel(trustScoreSummary.getTrustLevel())
+                    .badges(trustScoreSummary.getBadges())
                     .reportHistoryVisible(false)
                     .build();
         }

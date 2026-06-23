@@ -7,6 +7,7 @@ import com.tailandtale.domain.care.repository.EmotionDiaryRepository;
 import com.tailandtale.domain.care.repository.WalkRecordRepository;
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
+import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.global.exception.CareErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
@@ -30,6 +31,7 @@ public class EmotionDiaryService {
     private final EmotionDiaryRepository emotionDiaryRepository;
     private final WalkRecordRepository walkRecordRepository;
     private final DogRepository dogRepository;
+    private final TrustScoreService trustScoreService;
 
     // 감정 다이어리 생성
     @Transactional
@@ -48,7 +50,11 @@ public class EmotionDiaryService {
                 request.getDiaryContent()
         );
 
-        return EmotionDiaryDto.Response.from(emotionDiaryRepository.save(emotionDiary));
+        EmotionDiary savedEmotionDiary = emotionDiaryRepository.save(emotionDiary);
+
+        trustScoreService.evaluateBadges(memberId);
+
+        return EmotionDiaryDto.Response.from(savedEmotionDiary);
     }
 
     // 감정 다이어리 목록 조회

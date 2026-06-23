@@ -13,6 +13,7 @@ import com.tailandtale.domain.community.repository.CommunityPostRepository;
 import com.tailandtale.domain.community.repository.PostLikeRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.domain.report.dto.ReportDto;
 import com.tailandtale.domain.report.entity.Report;
 import com.tailandtale.domain.report.entity.ReportProcessAction;
@@ -42,6 +43,7 @@ public class ReportService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final TrustScoreService trustScoreService;
 
     // 신고 생성
     @Transactional
@@ -114,8 +116,15 @@ public class ReportService {
                 resolveReportStatus(action, request.getStatus()),
                 normalizeContent(request.getAdminMemo())
         );
+        applyTrustScoreForProcessedReport(report);
 
         return ReportDto.Response.from(report);
+    }
+
+    private void applyTrustScoreForProcessedReport(Report report) {
+        if (report.getStatus() == ReportStatus.RESOLVED) {
+            trustScoreService.applyReportResolved(report.getReportedMember(), report.getId());
+        }
     }
 
     private void applyReportAction(

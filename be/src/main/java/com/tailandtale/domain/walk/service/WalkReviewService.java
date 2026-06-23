@@ -2,6 +2,7 @@ package com.tailandtale.domain.walk.service;
 
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.domain.walk.dto.WalkReviewDto;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkReview;
@@ -31,6 +32,7 @@ public class WalkReviewService {
     private final WalkScheduleRepository walkScheduleRepository;
     private final WalkParticipantRepository walkParticipantRepository;
     private final MemberRepository memberRepository;
+    private final TrustScoreService trustScoreService;
 
     // 산책 후기 생성
     @Transactional
@@ -57,7 +59,11 @@ public class WalkReviewService {
                 request.getContent()
         );
 
-        return WalkReviewDto.Response.from(walkReviewRepository.save(walkReview));
+        WalkReview savedWalkReview = walkReviewRepository.save(walkReview);
+
+        trustScoreService.applyReviewReceived(savedWalkReview);
+
+        return WalkReviewDto.Response.from(savedWalkReview);
     }
 
     // 산책 후기 목록 조회

@@ -6,6 +6,7 @@ import com.tailandtale.domain.care.entity.HealthStatus;
 import com.tailandtale.domain.care.repository.HealthRecordRepository;
 import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
+import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.global.exception.CareErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.DogErrorCode;
@@ -26,6 +27,7 @@ import java.util.List;
 public class HealthRecordService {
     private final HealthRecordRepository healthRecordRepository;
     private final DogRepository dogRepository;
+    private final TrustScoreService trustScoreService;
 
     // 건강 기록 생성
     @Transactional
@@ -42,7 +44,11 @@ public class HealthRecordService {
                 request.getMemo()
         );
 
-        return HealthRecordDto.Response.from(healthRecordRepository.save(healthRecord));
+        HealthRecord savedHealthRecord = healthRecordRepository.save(healthRecord);
+
+        trustScoreService.evaluateBadges(memberId);
+
+        return HealthRecordDto.Response.from(savedHealthRecord);
     }
 
     // 건강 기록 목록 조회

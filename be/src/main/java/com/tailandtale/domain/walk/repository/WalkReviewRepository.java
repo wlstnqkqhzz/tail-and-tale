@@ -42,4 +42,7 @@ public interface WalkReviewRepository extends JpaRepository<WalkReview, Long> {
 
     // ?곗콉 ?꾧린 媛쒖닔 議고쉶
     long countByWalkScheduleId(Long walkScheduleId);
+
+    // 회원이 받은 좋은 후기 수 조회
+    long countByRevieweeIdAndRatingGreaterThanEqual(Long revieweeId, Integer rating);
 }

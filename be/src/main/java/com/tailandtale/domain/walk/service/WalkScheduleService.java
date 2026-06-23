@@ -5,6 +5,7 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
@@ -35,6 +36,7 @@ public class WalkScheduleService {
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
     private final ChatService chatService;
+    private final TrustScoreService trustScoreService;
 
     // 산책 일정 생성
     @Transactional
@@ -202,8 +204,18 @@ public class WalkScheduleService {
 
         return (int) targets.stream()
                 .filter(walkSchedule -> isWalkEnded(walkSchedule, now))
-                .peek(WalkSchedule::complete)
+                .peek(this::completeSchedule)
                 .count();
+    }
+
+    // 산책 일정 완료 및 신뢰도/뱃지 반영
+    private void completeSchedule(WalkSchedule walkSchedule) {
+        walkSchedule.complete();
+        trustScoreService.applyWalkCompleted(walkSchedule.getHostMember(), walkSchedule);
+        walkParticipantRepository.findAllByWalkScheduleIdOrderByCreatedAtAsc(walkSchedule.getId())
+                .stream()
+                .filter(walkParticipant -> walkParticipant.getStatus() == WalkParticipantStatus.APPROVED)
+                .forEach(walkParticipant -> trustScoreService.applyWalkCompleted(walkParticipant.getMember(), walkSchedule));
     }
 
     // 산책 일정 Entity 조회

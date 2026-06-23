@@ -8,6 +8,7 @@ import com.tailandtale.domain.dog.entity.Dog;
 import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
 import com.tailandtale.domain.walk.entity.WalkSchedule;
 import com.tailandtale.domain.walk.repository.WalkParticipantRepository;
@@ -38,6 +39,7 @@ public class WalkRecordService {
     private final MemberRepository memberRepository;
     private final WalkScheduleRepository walkScheduleRepository;
     private final WalkParticipantRepository walkParticipantRepository;
+    private final TrustScoreService trustScoreService;
 
     // 산책 기록 생성
     @Transactional
@@ -62,7 +64,11 @@ public class WalkRecordService {
                 request.getConditionAfterWalk()
         );
 
-        return WalkRecordDto.Response.from(walkRecordRepository.save(walkRecord));
+        WalkRecord savedWalkRecord = walkRecordRepository.save(walkRecord);
+
+        trustScoreService.evaluateBadges(memberId);
+
+        return WalkRecordDto.Response.from(savedWalkRecord);
     }
 
     // 산책 기록 목록 조회

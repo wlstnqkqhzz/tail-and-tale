@@ -4,5 +4,6 @@ package com.tailandtale.domain.notification.entity;
 
 public enum NotificationTargetType {
     WALK_SCHEDULE,
-    CHAT_ROOM
+    CHAT_ROOM,
+    BADGE
 }

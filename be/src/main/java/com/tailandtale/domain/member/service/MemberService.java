@@ -54,6 +54,7 @@ public class MemberService {
     private final EmotionDiaryService emotionDiaryService;
     private final HealthRecordService healthRecordService;
     private final AiAnalysisService aiAnalysisService;
+    private final TrustScoreService trustScoreService;
     private final CommunityPostService communityPostService;
     private final CommunityCommentService communityCommentService;
     private final PasswordEncoder passwordEncoder;
@@ -132,7 +133,8 @@ public class MemberService {
                         .findFirst()
                         .map(dog -> dog.getSize())
                         .orElse(null),
-                walkParticipantRepository.countByMemberIdAndStatus(memberId, WalkParticipantStatus.APPROVED)
+                walkParticipantRepository.countByMemberIdAndStatus(memberId, WalkParticipantStatus.APPROVED),
+                trustScoreService.getSummary(memberId)
         );
     }
 

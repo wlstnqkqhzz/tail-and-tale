@@ -8,7 +8,8 @@ public enum NotificationSettingType {
     WALK_APPROVED,
     WALK_REJECTED,
     WALK_CANCELED,
-    CHAT_MESSAGE;
+    CHAT_MESSAGE,
+    BADGE_EARNED;
 
     public static NotificationSettingType from(NotificationType type) {
         return NotificationSettingType.valueOf(type.name());

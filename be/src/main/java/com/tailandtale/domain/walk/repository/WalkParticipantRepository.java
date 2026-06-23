@@ -2,7 +2,10 @@ package com.tailandtale.domain.walk.repository;
 
 import com.tailandtale.domain.walk.entity.WalkParticipant;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
+import com.tailandtale.domain.walk.entity.WalkScheduleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +49,21 @@ public interface WalkParticipantRepository extends JpaRepository<WalkParticipant
 
     // 회원별 승인 산책 참여 수 조회
     long countByMemberIdAndStatus(Long memberId, WalkParticipantStatus status);
+
+    // 회원별 완료 산책 참여 수 조회
+    @Query("""
+            select count(walkParticipant)
+            from WalkParticipant walkParticipant
+            where walkParticipant.member.id = :memberId
+              and walkParticipant.status = :participantStatus
+              and walkParticipant.walkSchedule.status = :scheduleStatus
+            """
+    )
+    long countCompletedParticipationsByMemberId(
+            @Param("memberId") Long memberId,
+            @Param("participantStatus") WalkParticipantStatus participantStatus,
+            @Param("scheduleStatus") WalkScheduleStatus scheduleStatus
+    );
 
     // 회원의 특정 산책 참여 상태 여부 확인
     boolean existsByWalkScheduleIdAndMemberIdAndStatus(

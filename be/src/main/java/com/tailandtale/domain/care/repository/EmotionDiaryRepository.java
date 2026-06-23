@@ -35,4 +35,7 @@ public interface EmotionDiaryRepository extends JpaRepository<EmotionDiary, Long
 
     // 최근 감정 다이어리 조회
     List<EmotionDiary> findTop5ByDog_Member_IdOrderByRecordedDateDesc(Long memberId);
+
+    // 회원 감정 다이어리 수 조회
+    long countByDog_Member_Id(Long memberId);
 }

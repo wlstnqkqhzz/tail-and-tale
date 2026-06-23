@@ -35,4 +35,7 @@ public interface HealthRecordRepository extends JpaRepository<HealthRecord, Long
 
     // 최근 건강 기록 조회
     List<HealthRecord> findTop5ByDog_Member_IdOrderByRecordedDateDesc(Long memberId);
+
+    // 회원 건강 기록 수 조회
+    long countByDog_Member_Id(Long memberId);
 }

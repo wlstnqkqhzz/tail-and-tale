@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReportModal from "../report/ReportModal";
 import { blockMember, getMemberMiniProfile } from "../../api/member";
 import { createReport } from "../../api/report";
@@ -46,6 +47,7 @@ export function UserActionTrigger({ memberId, nickname, profileImageUrl, disable
 }
 
 export default function UserMiniProfileModal({ memberId, fallbackNickname, isOpen, onClose }) {
+    const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isReportOpen, setIsReportOpen] = useState(false);
@@ -120,6 +122,11 @@ export default function UserMiniProfileModal({ memberId, fallbackNickname, isOpe
         }
     };
 
+    const handleViewProfile = () => {
+        onClose();
+        navigate(`/members/${memberId}`);
+    };
+
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-6" onClick={onClose}>
@@ -162,14 +169,35 @@ export default function UserMiniProfileModal({ memberId, fallbackNickname, isOpe
 
                             <div className="mt-5 grid gap-2 border-y border-gray-100 py-4 text-sm text-gray-600">
                                 <p>
+                                    신뢰도 <strong className="text-gray-950">{profile?.trustScore ?? 60}점</strong>
+                                    <span className="ml-2 text-xs font-bold text-emerald-600">
+                                        {formatTrustLevel(profile?.trustLevel)}
+                                    </span>
+                                </p>
+                                <p>
                                     산책 참여 <strong className="text-gray-950">{profile?.walkParticipationCount ?? 0}회</strong>
                                 </p>
                                 <p>신고 이력 비공개</p>
                             </div>
 
+                            {profile?.badges?.length > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {profile.badges.slice(0, 3).map((badge) => (
+                                        <span
+                                            key={badge.badgeId}
+                                            className="inline-flex h-8 items-center rounded-full border border-emerald-100 bg-emerald-50 px-3 text-xs font-bold text-emerald-700"
+                                            title={badge.description || badge.name}
+                                        >
+                                            {badge.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="mt-5 grid gap-2">
                                 <button
                                     type="button"
+                                    onClick={handleViewProfile}
                                     className="h-11 border border-gray-200 text-sm font-bold transition hover:bg-gray-50"
                                 >
                                     프로필 보기
@@ -203,4 +231,19 @@ export default function UserMiniProfileModal({ memberId, fallbackNickname, isOpe
             />
         </>
     );
+}
+
+function formatTrustLevel(trustLevel) {
+    switch (trustLevel) {
+        case "TRUSTED":
+            return "믿음직함";
+        case "NORMAL":
+            return "보통";
+        case "CAUTION":
+            return "주의";
+        case "LOW":
+            return "낮음";
+        default:
+            return "보통";
+    }
 }

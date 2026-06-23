@@ -32,4 +32,7 @@ public interface WalkRecordRepository extends JpaRepository<WalkRecord, Long> {
 
     // 최근 산책 기록 조회
     List<WalkRecord> findTop5ByMember_IdOrderByStartedAtDesc(Long memberId);
+
+    // 회원 산책 기록 수 조회
+    long countByMember_Id(Long memberId);
 }

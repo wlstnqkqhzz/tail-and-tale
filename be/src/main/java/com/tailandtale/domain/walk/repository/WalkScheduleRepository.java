@@ -19,4 +19,7 @@ public interface WalkScheduleRepository extends JpaRepository<WalkSchedule, Long
             Collection<WalkScheduleStatus> statuses,
             LocalDateTime scheduledAt
     );
+
+    // 회원이 등록한 완료 산책 수 조회
+    long countByHostMemberIdAndStatus(Long hostMemberId, WalkScheduleStatus status);
 }
