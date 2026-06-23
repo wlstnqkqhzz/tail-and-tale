@@ -100,6 +100,10 @@ public class PendingMemberFilter extends OncePerRequestFilter {
             return true;
         }
 
+        if (HttpMethod.POST.matches(method) && "/api/members/logout".equals(uri)) {
+            return true;
+        }
+
         return HttpMethod.PATCH.matches(method)
                 && "/api/members/me/profile/complete".equals(uri);
     }
