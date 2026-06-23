@@ -272,7 +272,7 @@ export default function AuthModal({ onClose }) {
                             <button type="button" onClick={() => redirectToOAuth("kakao")}
                                 className={`flex h-14 items-center justify-center rounded-2xl bg-[#FEE500] text-xl font-bold text-black ${buttonEffect}`}
                             >
-                                💛
+                                K
                             </button>
 
                             <button type="button" onClick={() => redirectToOAuth("naver")}

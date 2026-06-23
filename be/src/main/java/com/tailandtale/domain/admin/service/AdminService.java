@@ -13,6 +13,10 @@ import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.MemberRole;
 import com.tailandtale.domain.member.entity.MemberStatus;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.report.dto.ReportDto;
+import com.tailandtale.domain.report.entity.ReportStatus;
+import com.tailandtale.domain.report.entity.ReportTargetType;
+import com.tailandtale.domain.report.service.ReportService;
 import com.tailandtale.global.exception.AdminErrorCode;
 import com.tailandtale.global.exception.CommunityErrorCode;
 import com.tailandtale.global.exception.CustomException;
@@ -33,6 +37,7 @@ public class AdminService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityCommentRepository communityCommentRepository;
     private final PostLikeRepository postLikeRepository;
+    private final ReportService reportService;
 
     public AdminDto.DashboardResponse getDashboard(Long adminMemberId) {
         validateAdmin(adminMemberId);
@@ -43,6 +48,7 @@ public class AdminService {
                 .bannedMemberCount(memberRepository.countByStatus(MemberStatus.BANNED))
                 .communityPostCount(communityPostRepository.count())
                 .communityCommentCount(communityCommentRepository.count())
+                .pendingReportCount(reportService.countPendingReports())
                 .build();
     }
 
@@ -173,6 +179,38 @@ public class AdminService {
             comment.delete();
             comment.getCommunityPost().decreaseCommentCount();
         }
+    }
+
+    public AdminDto.ReportPageResponse getReports(
+            Long adminMemberId,
+            ReportStatus status,
+            ReportTargetType targetType,
+            Pageable pageable
+    ) {
+        validateAdmin(adminMemberId);
+
+        return AdminDto.ReportPageResponse.from(
+                reportService.getReportsForAdmin(
+                        status,
+                        targetType,
+                        pageable
+                )
+        );
+    }
+
+    @Transactional
+    public ReportDto.Response processReport(
+            Long adminMemberId,
+            Long reportId,
+            ReportDto.ProcessRequest request
+    ) {
+        validateAdmin(adminMemberId);
+
+        return reportService.processReport(
+                adminMemberId,
+                reportId,
+                request
+        );
     }
 
     private Member validateAdmin(Long adminMemberId) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
+import ReportModal from "../components/report/ReportModal";
 import {
     createCommunityComment,
     deleteCommunityComment,
@@ -12,6 +13,7 @@ import {
     toggleCommunityPostLike,
     updateCommunityComment,
 } from "../api/community";
+import { createReport } from "../api/report";
 import { getAccessToken } from "../utils/token";
 
 const categoryLabels = {
@@ -37,6 +39,8 @@ export default function CommunityDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isReportSubmitting, setIsReportSubmitting] = useState(false);
     const commentTree = useMemo(() => buildCommentTree(comments), [comments]);
 
     // 게시글 상세 조회
@@ -252,6 +256,28 @@ export default function CommunityDetailPage() {
         }
     };
 
+    // 게시글 신고
+    const handleReportPost = async ({ reason, content }) => {
+        try {
+            setIsReportSubmitting(true);
+
+            await createReport({
+                targetType: "COMMUNITY_POST",
+                targetId: Number(communityPostId),
+                reason,
+                content,
+            });
+
+            alert("신고가 접수되었습니다.");
+            setIsReportModalOpen(false);
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "신고 접수에 실패했습니다.");
+        } finally {
+            setIsReportSubmitting(false);
+        }
+    };
+
     return (
         <>
             <Header />
@@ -321,6 +347,16 @@ export default function CommunityDetailPage() {
                                 >
                                     좋아요 {post.likeCount}
                                 </button>
+
+                                {!post.isWriter && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsReportModalOpen(true)}
+                                        className="h-11 border border-red-100 px-5 text-sm font-bold text-red-500 transition hover:bg-red-50"
+                                    >
+                                        신고
+                                    </button>
+                                )}
 
                                 {post.isWriter && (
                                     <>
@@ -412,6 +448,14 @@ export default function CommunityDetailPage() {
                     </section>
                 )}
             </main>
+
+            <ReportModal
+                isOpen={isReportModalOpen}
+                targetLabel={post?.title ? `"${post.title}" 게시글` : "게시글"}
+                isSubmitting={isReportSubmitting}
+                onClose={() => setIsReportModalOpen(false)}
+                onSubmit={handleReportPost}
+            />
         </>
     );
 }

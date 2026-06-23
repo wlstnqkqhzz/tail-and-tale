@@ -219,9 +219,9 @@ export default function HomePage() {
     const renderGuestHome = () => (
         <main className="pt-20">
             <section className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center">
-                <h1 className="mb-6 text-6xl font-bold text-gray-900">
+                <h1 className="mb-6 text-6xl font-bold leading-[1.2] text-gray-900">
                     반려견과의 이야기를
-                    <br />
+                    <br/>
                     기록하고 공유하세요
                 </h1>
 

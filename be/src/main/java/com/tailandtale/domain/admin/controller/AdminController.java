@@ -4,6 +4,9 @@ import com.tailandtale.domain.admin.dto.AdminDto;
 import com.tailandtale.domain.admin.service.AdminService;
 import com.tailandtale.domain.community.entity.CommunityPostCategory;
 import com.tailandtale.domain.member.entity.MemberStatus;
+import com.tailandtale.domain.report.dto.ReportDto;
+import com.tailandtale.domain.report.entity.ReportStatus;
+import com.tailandtale.domain.report.entity.ReportTargetType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -125,6 +128,43 @@ public class AdminController {
         );
 
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/reports")
+    public ResponseEntity<AdminDto.ReportPageResponse> getReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) ReportTargetType targetType
+    ) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        return ResponseEntity.ok(
+                adminService.getReports(
+                        getLoginMemberId(),
+                        status,
+                        targetType,
+                        pageable
+                )
+        );
+    }
+
+    @PatchMapping("/reports/{reportId}")
+    public ResponseEntity<ReportDto.Response> processReport(
+            @PathVariable Long reportId,
+            @RequestBody @Valid ReportDto.ProcessRequest request
+    ) {
+        return ResponseEntity.ok(
+                adminService.processReport(
+                        getLoginMemberId(),
+                        reportId,
+                        request
+                )
+        );
     }
 
     private Long getLoginMemberId() {

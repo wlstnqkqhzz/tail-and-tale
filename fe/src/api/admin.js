@@ -34,3 +34,13 @@ export const getAdminCommunityComments = (params) => {
 export const deleteAdminCommunityComment = (commentId) => {
     return api.delete(`/api/admin/community/comments/${commentId}`);
 };
+
+// 관리자 신고 목록 조회
+export const getAdminReports = (params) => {
+    return api.get("/api/admin/reports", { params });
+};
+
+// 관리자 신고 처리
+export const updateAdminReport = (reportId, data) => {
+    return api.patch(`/api/admin/reports/${reportId}`, data);
+};

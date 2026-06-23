@@ -5,6 +5,7 @@ import com.tailandtale.domain.community.dto.CommunityPostDto;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.MemberRole;
 import com.tailandtale.domain.member.entity.MemberStatus;
+import com.tailandtale.domain.report.dto.ReportDto;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,6 +27,7 @@ public class AdminDto {
         private long bannedMemberCount;
         private long communityPostCount;
         private long communityCommentCount;
+        private long pendingReportCount;
     }
 
     // 관리자 회원 목록 응답
@@ -101,5 +103,28 @@ public class AdminDto {
         private long totalElements;
         private int totalPages;
         private boolean last;
+    }
+
+    // 관리자 신고 목록 응답
+    @Getter
+    @Builder
+    public static class ReportPageResponse {
+        private List<ReportDto.Response> reports;
+        private int page;
+        private int size;
+        private long totalElements;
+        private int totalPages;
+        private boolean last;
+
+        public static ReportPageResponse from(ReportDto.PageResponse response) {
+            return ReportPageResponse.builder()
+                    .reports(response.getReports())
+                    .page(response.getPage())
+                    .size(response.getSize())
+                    .totalElements(response.getTotalElements())
+                    .totalPages(response.getTotalPages())
+                    .last(response.isLast())
+                    .build();
+        }
     }
 }
