@@ -1,10 +1,15 @@
 package com.tailandtale.domain.notification.dto;
 
 import com.tailandtale.domain.notification.entity.Notification;
+import com.tailandtale.domain.notification.entity.NotificationChannel;
+import com.tailandtale.domain.notification.entity.NotificationSetting;
+import com.tailandtale.domain.notification.entity.NotificationSettingType;
 import com.tailandtale.domain.notification.entity.NotificationTargetType;
 import com.tailandtale.domain.notification.entity.NotificationType;
+import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +24,41 @@ public class NotificationDto {
     public static class ListResponse {
         private Long unreadCount;
         private List<Response> notifications;
+    }
+
+    // 알림 설정 변경 요청 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class SettingUpdateRequest {
+
+        @NotNull(message = "알림 수신 여부는 필수입니다.")
+        private Boolean isEnabled;
+    }
+
+    // 알림 설정 응답 DTO
+    @Getter
+    @Builder
+    public static class SettingResponse {
+
+        private NotificationSettingType notificationType;
+        private NotificationChannel channel;
+        private Boolean isEnabled;
+
+        public static SettingResponse from(NotificationSetting notificationSetting) {
+            return SettingResponse.builder()
+                    .notificationType(notificationSetting.getNotificationType())
+                    .channel(notificationSetting.getChannel())
+                    .isEnabled(notificationSetting.getIsEnabled())
+                    .build();
+        }
+
+        public static SettingResponse defaultEnabled(NotificationSettingType notificationType, NotificationChannel channel) {
+            return SettingResponse.builder()
+                    .notificationType(notificationType)
+                    .channel(channel)
+                    .isEnabled(true)
+                    .build();
+        }
     }
 
     // 알림 응답 DTO

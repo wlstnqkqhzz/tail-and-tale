@@ -167,10 +167,13 @@ public class WalkScheduleService {
     }
 
     // 산책 일정 목록 조회
+    @Transactional
     public List<WalkScheduleDto.DetailResponse> getSchedules(
             Long memberId,
             WalkScheduleDto.SearchCondition condition
     ) {
+        completeExpiredSchedules();
+
         return walkScheduleRepository.search(condition)
                 .stream()
                 .map(walkSchedule -> toDetailResponse(walkSchedule, memberId))
@@ -179,16 +182,45 @@ public class WalkScheduleService {
     }
 
     // 산책 일정 상세 조회
+    @Transactional
     public WalkScheduleDto.DetailResponse getSchedule(Long memberId, Long walkScheduleId) {
+        completeExpiredSchedules();
+
         WalkSchedule walkSchedule = getScheduleEntity(walkScheduleId);
 
         return toDetailResponse(walkSchedule, memberId);
+    }
+
+    // 지난 산책 일정 자동 완료 처리
+    @Transactional
+    public int completeExpiredSchedules() {
+        LocalDateTime now = LocalDateTime.now();
+        List<WalkSchedule> targets = walkScheduleRepository.findAllByStatusInAndScheduledAtBefore(
+                List.of(WalkScheduleStatus.OPEN, WalkScheduleStatus.CLOSED),
+                now
+        );
+
+        return (int) targets.stream()
+                .filter(walkSchedule -> isWalkEnded(walkSchedule, now))
+                .peek(WalkSchedule::complete)
+                .count();
     }
 
     // 산책 일정 Entity 조회
     private WalkSchedule getScheduleEntity(Long walkScheduleId) {
         return walkScheduleRepository.findById(walkScheduleId)
                 .orElseThrow(() -> new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_NOT_FOUND));
+    }
+
+    // 산책 종료 시각 경과 여부 확인
+    private boolean isWalkEnded(WalkSchedule walkSchedule, LocalDateTime now) {
+        int expectedDurationMinutes = walkSchedule.getExpectedDurationMinutes() == null
+                ? 0
+                : walkSchedule.getExpectedDurationMinutes();
+
+        return !walkSchedule.getScheduledAt()
+                .plusMinutes(expectedDurationMinutes)
+                .isAfter(now);
     }
 
     // 반려견 Entity 조회

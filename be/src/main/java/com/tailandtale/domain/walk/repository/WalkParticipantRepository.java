@@ -44,6 +44,9 @@ public interface WalkParticipantRepository extends JpaRepository<WalkParticipant
             WalkParticipantStatus status
     );
 
+    // 회원별 승인 산책 참여 수 조회
+    long countByMemberIdAndStatus(Long memberId, WalkParticipantStatus status);
+
     // 회원의 특정 산책 참여 상태 여부 확인
     boolean existsByWalkScheduleIdAndMemberIdAndStatus(
             Long walkScheduleId,

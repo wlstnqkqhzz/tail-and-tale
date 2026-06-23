@@ -5,6 +5,7 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.MemberBlockService;
 import com.tailandtale.domain.notification.entity.NotificationTargetType;
 import com.tailandtale.domain.notification.entity.NotificationType;
 import com.tailandtale.domain.notification.service.NotificationService;
@@ -34,6 +35,7 @@ public class WalkParticipantService {
     private final DogRepository dogRepository;
     private final ChatService chatService;
     private final NotificationService notificationService;
+    private final MemberBlockService memberBlockService;
 
     // 산책 참여 신청
     @Transactional
@@ -48,6 +50,7 @@ public class WalkParticipantService {
 
         validateWalkOpen(walkSchedule);
         validateNotHost(walkSchedule, memberId);
+        memberBlockService.validateNotBlockedBetween(memberId, walkSchedule.getHostMember().getId());
         validateDogOwner(dog, memberId);
         validateVerifiedDog(dog);
         validateNotAlreadyActive(walkScheduleId, memberId, dog.getId());
@@ -91,6 +94,7 @@ public class WalkParticipantService {
         WalkParticipant walkParticipant = getWalkParticipant(walkScheduleId, walkParticipantId);
 
         validateHost(walkSchedule, memberId);
+        memberBlockService.validateNotBlockedBetween(memberId, walkParticipant.getMember().getId());
         validateWalkOpen(walkSchedule);
         validateRequested(walkParticipant);
 

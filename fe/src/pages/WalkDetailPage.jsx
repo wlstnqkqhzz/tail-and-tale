@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
+import { UserActionTrigger } from "../components/member/UserMiniProfileModal";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
 import { getWalkChatRoom } from "../api/chat";
 import { getDogs } from "../api/dog";
@@ -439,6 +440,17 @@ export default function WalkDetailPage() {
                                             채팅방 입장
                                         </button>
 
+                                        {!isHost && (
+                                            <div className="flex h-12 items-center justify-center rounded-full border border-gray-200 px-8 text-sm font-bold transition hover:bg-gray-50 sm:col-span-2">
+                                                <UserActionTrigger
+                                                    memberId={schedule.hostMemberId}
+                                                    nickname="호스트 회원"
+                                                >
+                                                    <span>호스트 프로필</span>
+                                                </UserActionTrigger>
+                                            </div>
+                                        )}
+
                                         {canCancelParticipation && (
                                             <button
                                                 type="button"
@@ -611,7 +623,11 @@ function HostParticipantPanel({ participants, isLoading, onApprove, onReject }) 
                         >
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <p className="font-bold text-gray-950">{participant.nickname}</p>
+                                    <UserActionTrigger
+                                        memberId={participant.memberId}
+                                        nickname={participant.nickname}
+                                        profileImageUrl={participant.profileImageUrl}
+                                    />
                                     <StatusBadge status={participant.status} type="participant" />
                                 </div>
 
@@ -624,25 +640,28 @@ function HostParticipantPanel({ participants, isLoading, onApprove, onReject }) 
                                 </p>
                             </div>
 
-                            {participant.status === "REQUESTED" && (
-                                <div className="grid grid-cols-2 gap-2 md:w-40 md:self-start">
-                                    <button
-                                        type="button"
-                                        onClick={() => onReject(participant.walkParticipantId)}
-                                        className="h-11 border border-gray-200 text-sm font-bold transition hover:bg-gray-50"
-                                    >
-                                        거절
-                                    </button>
+                            <div className="grid grid-cols-2 gap-2 md:w-48 md:self-start">
+                                {participant.status === "REQUESTED" && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => onReject(participant.walkParticipantId)}
+                                            className="h-11 border border-gray-200 text-sm font-bold transition hover:bg-gray-50"
+                                        >
+                                            거절
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => onApprove(participant.walkParticipantId)}
-                                        className="h-11 bg-black text-sm font-bold text-white transition hover:opacity-80"
-                                    >
-                                        승인
-                                    </button>
-                                </div>
-                            )}
+                                        <button
+                                            type="button"
+                                            onClick={() => onApprove(participant.walkParticipantId)}
+                                            className="h-11 bg-black text-sm font-bold text-white transition hover:opacity-80"
+                                        >
+                                            승인
+                                        </button>
+                                    </>
+                                )}
+
+                            </div>
                         </div>
                     ))}
                 </div>

@@ -25,6 +25,11 @@ export const getMyInfo = () => {
     return api.get("/api/members/me");
 };
 
+// 회원 미니 프로필 조회
+export const getMemberMiniProfile = (memberId) => {
+    return api.get(`/api/members/${memberId}/mini-profile`);
+};
+
 // 내 정보 수정
 export const updateMyProfile = (data) => {
     return api.patch("/api/members/me", data);
@@ -43,4 +48,19 @@ export const withdrawMyAccount = (data) => {
 // 내 마이페이지 대시보드 조회
 export const getMyDashboard = () => {
     return api.get("/api/members/me/dashboard");
+};
+
+// 내 차단 목록 조회
+export const getMyBlocks = () => {
+    return api.get("/api/members/blocks");
+};
+
+// 회원 차단
+export const blockMember = (memberId, data = {}) => {
+    return api.post(`/api/members/${memberId}/block`, data);
+};
+
+// 회원 차단 해제
+export const unblockMember = (memberId) => {
+    return api.delete(`/api/members/${memberId}/block`);
 };

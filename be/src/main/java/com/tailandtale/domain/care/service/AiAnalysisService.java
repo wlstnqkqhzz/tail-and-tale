@@ -19,9 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 // AI 분석 Service
 
@@ -140,6 +143,84 @@ public class AiAnalysisService {
                 .emotionSummary(emotionDiaryService.getEmotionSummary(memberId, dogId, targetStartDate, targetEndDate))
                 .healthSummary(healthRecordService.getHealthSummary(memberId, dogId, targetStartDate, targetEndDate))
                 .walkSummary(walkRecordService.getWalkSummary(memberId, dogId, targetStartDate, targetEndDate))
+                .trend(getCareTrend(memberId, dogId, targetStartDate, targetEndDate))
+                .build();
+    }
+
+    // 케어 그래프 추세 조회
+    private AiAnalysisDto.CareTrendResponse getCareTrend(
+            Long memberId,
+            Long dogId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        List<WalkRecord> walkRecords = walkRecordService.getWalkRecordsForSummary(memberId, dogId, startDate, endDate);
+        List<EmotionDiary> emotionDiaries = emotionDiaryService.getEmotionDiariesForSummary(memberId, dogId, startDate, endDate);
+        List<HealthRecord> healthRecords = healthRecordService.getHealthRecordsForSummary(memberId, dogId, startDate, endDate);
+        Map<LocalDate, List<WalkRecord>> walkRecordsByDate = walkRecords.stream()
+                .collect(Collectors.groupingBy(walkRecord -> walkRecord.getStartedAt().toLocalDate()));
+        Map<LocalDate, EmotionDiary> emotionDiaryByDate = emotionDiaries.stream()
+                .collect(Collectors.toMap(
+                        EmotionDiary::getRecordedDate,
+                        emotionDiary -> emotionDiary,
+                        (currentDiary, nextDiary) -> currentDiary
+                ));
+        Map<LocalDate, HealthRecord> healthRecordByDate = healthRecords.stream()
+                .collect(Collectors.toMap(
+                        HealthRecord::getRecordedDate,
+                        healthRecord -> healthRecord,
+                        (currentRecord, nextRecord) -> currentRecord
+                ));
+
+        return AiAnalysisDto.CareTrendResponse.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .walkTrend(startDate.datesUntil(endDate.plusDays(1))
+                        .map(date -> toDailyWalkTrend(date, walkRecordsByDate.getOrDefault(date, List.of())))
+                        .toList())
+                .emotionTrend(startDate.datesUntil(endDate.plusDays(1))
+                        .map(date -> toDailyEmotionTrend(date, emotionDiaryByDate.get(date)))
+                        .toList())
+                .healthTrend(startDate.datesUntil(endDate.plusDays(1))
+                        .map(date -> toDailyHealthTrend(date, healthRecordByDate.get(date)))
+                        .toList())
+                .build();
+    }
+
+    // 일자별 산책 추세 생성
+    private AiAnalysisDto.DailyWalkTrend toDailyWalkTrend(LocalDate date, List<WalkRecord> walkRecords) {
+        Integer totalDurationMinutes = walkRecords.stream()
+                .map(WalkRecord::getDurationMinutes)
+                .filter(durationMinutes -> durationMinutes != null)
+                .reduce(0, Integer::sum);
+        BigDecimal totalDistanceKm = walkRecords.stream()
+                .map(WalkRecord::getDistanceKm)
+                .filter(distanceKm -> distanceKm != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return AiAnalysisDto.DailyWalkTrend.builder()
+                .date(date)
+                .count((long) walkRecords.size())
+                .totalDurationMinutes(totalDurationMinutes)
+                .totalDistanceKm(totalDistanceKm)
+                .build();
+    }
+
+    // 일자별 감정 추세 생성
+    private AiAnalysisDto.DailyEmotionTrend toDailyEmotionTrend(LocalDate date, EmotionDiary emotionDiary) {
+        return AiAnalysisDto.DailyEmotionTrend.builder()
+                .date(date)
+                .emotion(emotionDiary == null ? null : emotionDiary.getEmotion())
+                .conditionLevel(emotionDiary == null ? null : emotionDiary.getConditionLevel())
+                .build();
+    }
+
+    // 일자별 건강 추세 생성
+    private AiAnalysisDto.DailyHealthTrend toDailyHealthTrend(LocalDate date, HealthRecord healthRecord) {
+        return AiAnalysisDto.DailyHealthTrend.builder()
+                .date(date)
+                .weight(healthRecord == null ? null : healthRecord.getWeight())
+                .healthStatus(healthRecord == null ? null : healthRecord.getHealthStatus())
                 .build();
     }
 

@@ -1,17 +1,24 @@
 package com.tailandtale.domain.notification.service;
 
 import com.tailandtale.domain.member.entity.Member;
+import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.notification.dto.NotificationDto;
-import com.tailandtale.domain.notification.entity.Notification;
-import com.tailandtale.domain.notification.entity.NotificationTargetType;
-import com.tailandtale.domain.notification.entity.NotificationType;
+import com.tailandtale.domain.notification.entity.*;
 import com.tailandtale.domain.notification.repository.NotificationRepository;
+import com.tailandtale.domain.notification.repository.NotificationSettingRepository;
 import com.tailandtale.global.exception.CustomException;
+import com.tailandtale.global.exception.MemberErrorCode;
 import com.tailandtale.global.exception.NotificationErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 // 알림 Service
 
@@ -20,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class NotificationService {
     private final NotificationRepository notificationRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
+    private final MemberRepository memberRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     // 알림 생성
@@ -32,6 +41,10 @@ public class NotificationService {
             NotificationTargetType targetType,
             Long targetId
     ) {
+        if (!isEnabled(member.getId(), type)) {
+            return;
+        }
+
         Notification notification = Notification.create(
                 member,
                 type,
@@ -47,6 +60,56 @@ public class NotificationService {
                 "/sub/notifications/" + member.getId(),
                 NotificationDto.Response.from(notification)
         );
+    }
+
+    // 내 알림 설정 목록 조회
+    public List<NotificationDto.SettingResponse> getMySettings(Long memberId) {
+        Map<NotificationSettingType, NotificationSetting> settings = notificationSettingRepository.findAllByMemberIdAndChannel(
+                        memberId,
+                        NotificationChannel.WEB
+                )
+                .stream()
+                .collect(Collectors.toMap(
+                        NotificationSetting::getNotificationType,
+                        Function.identity(),
+                        (currentSetting, nextSetting) -> currentSetting
+                ));
+
+        return Arrays.stream(NotificationSettingType.values())
+                .map(notificationType -> {
+                    NotificationSetting setting = settings.get(notificationType);
+
+                    return setting == null
+                            ? NotificationDto.SettingResponse.defaultEnabled(notificationType, NotificationChannel.WEB)
+                            : NotificationDto.SettingResponse.from(setting);
+                })
+                .toList();
+    }
+
+    // 내 알림 설정 변경
+    @Transactional
+    public NotificationDto.SettingResponse updateMySetting(
+            Long memberId,
+            NotificationSettingType notificationType,
+            NotificationDto.SettingUpdateRequest request
+    ) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        NotificationSetting notificationSetting = notificationSettingRepository.findByMemberIdAndNotificationTypeAndChannel(
+                memberId,
+                notificationType,
+                NotificationChannel.WEB
+        ).orElseGet(() -> NotificationSetting.create(
+                member,
+                notificationType,
+                NotificationChannel.WEB,
+                true
+        ));
+
+        notificationSetting.updateEnabled(request.getIsEnabled());
+
+        return NotificationDto.SettingResponse.from(notificationSettingRepository.save(notificationSetting));
     }
 
     // 내 알림 목록 조회
@@ -91,5 +154,28 @@ public class NotificationService {
                         targetId
                 )
                 .forEach(Notification::read);
+    }
+
+    // 알림 수신 가능 여부 확인
+    private boolean isEnabled(Long memberId, NotificationType type) {
+        boolean allEnabled = notificationSettingRepository.findByMemberIdAndNotificationTypeAndChannel(
+                        memberId,
+                        NotificationSettingType.ALL,
+                        NotificationChannel.WEB
+                )
+                .map(NotificationSetting::getIsEnabled)
+                .orElse(true);
+
+        if (!allEnabled) {
+            return false;
+        }
+
+        return notificationSettingRepository.findByMemberIdAndNotificationTypeAndChannel(
+                        memberId,
+                        NotificationSettingType.from(type),
+                        NotificationChannel.WEB
+                )
+                .map(NotificationSetting::getIsEnabled)
+                .orElse(true);
     }
 }

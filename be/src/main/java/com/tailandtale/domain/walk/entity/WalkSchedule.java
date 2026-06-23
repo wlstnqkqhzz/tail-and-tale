@@ -216,4 +216,9 @@ public class WalkSchedule extends BaseEntity {
     public void reopen() {
         this.status = WalkScheduleStatus.OPEN;
     }
+
+    // 산책 완료
+    public void complete() {
+        this.status = WalkScheduleStatus.COMPLETED;
+    }
 }

@@ -45,6 +45,12 @@ public class MemberController {
         return ResponseEntity.ok(memberService.getMember(memberId));
     }
 
+    // 회원 미니 프로필 조회
+    @GetMapping("/{memberId}/mini-profile")
+    public ResponseEntity<MemberDto.MiniProfileResponse> getMiniProfile(@PathVariable Long memberId) {
+        return ResponseEntity.ok(memberService.getMiniProfile(memberId));
+    }
+
     // OAuth 추가 정보 입력 완료
     @PatchMapping("/me/profile/complete")
     public ResponseEntity<MemberDto.DetailResponse> completeProfile(@Valid @RequestBody MemberDto.CompleteProfileRequest request) {

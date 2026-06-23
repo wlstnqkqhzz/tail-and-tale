@@ -7,6 +7,7 @@ import com.tailandtale.domain.chat.repository.ChatRoomMemberRepository;
 import com.tailandtale.domain.chat.repository.ChatRoomRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.MemberBlockService;
 import com.tailandtale.domain.notification.entity.NotificationTargetType;
 import com.tailandtale.domain.notification.entity.NotificationType;
 import com.tailandtale.domain.notification.service.NotificationService;
@@ -40,6 +41,7 @@ public class ChatService {
     private final WalkParticipantRepository walkParticipantRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
+    private final MemberBlockService memberBlockService;
 
     // 산책 생성 시 채팅방 생성
     @Transactional
@@ -153,6 +155,7 @@ public class ChatService {
 
         validateChatRoomActive(chatRoom);
         validateActiveChatRoomMember(chatRoomId, memberId);
+        validateNotBlockedChatMember(chatRoomId, memberId);
         validateMessage(request.getContent());
 
         ChatMessage chatMessage = ChatMessage.text(
@@ -293,6 +296,21 @@ public class ChatService {
         if (content.length() > 1000) {
             throw new CustomException(ChatErrorCode.CHAT_MESSAGE_TOO_LONG);
         }
+    }
+
+    // 채팅 메시지 알림 생성
+    // 차단 관계 채팅 전송 검증
+    private void validateNotBlockedChatMember(Long chatRoomId, Long senderId) {
+        chatRoomMemberRepository.findAllByChatRoomIdAndStatus(
+                        chatRoomId,
+                        ChatRoomMemberStatus.ACTIVE
+                )
+                .stream()
+                .map(chatRoomMember -> chatRoomMember.getMember().getId())
+                .filter(memberId -> !memberId.equals(senderId))
+                .filter(memberId -> memberBlockService.isBlockedBetween(senderId, memberId))
+                .findFirst()
+                .ifPresent(memberId -> memberBlockService.validateNotBlockedBetween(senderId, memberId));
     }
 
     // 채팅 메시지 알림 생성

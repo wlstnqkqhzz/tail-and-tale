@@ -2,11 +2,15 @@ package com.tailandtale.domain.notification.controller;
 
 import com.tailandtale.domain.notification.dto.NotificationDto;
 import com.tailandtale.domain.notification.entity.NotificationTargetType;
+import com.tailandtale.domain.notification.entity.NotificationSettingType;
 import com.tailandtale.domain.notification.service.NotificationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 // 알림 API 컨트롤러
 
@@ -22,6 +26,31 @@ public class NotificationController {
         return ResponseEntity.ok(
                 notificationService.getMyNotifications(
                         getLoginMemberId()
+                )
+        );
+    }
+
+    // 내 알림 설정 목록 조회
+    @GetMapping("/settings")
+    public ResponseEntity<List<NotificationDto.SettingResponse>> getMySettings() {
+        return ResponseEntity.ok(
+                notificationService.getMySettings(
+                        getLoginMemberId()
+                )
+        );
+    }
+
+    // 내 알림 설정 변경
+    @PatchMapping("/settings/{notificationType}")
+    public ResponseEntity<NotificationDto.SettingResponse> updateMySetting(
+            @PathVariable NotificationSettingType notificationType,
+            @Valid @RequestBody NotificationDto.SettingUpdateRequest request
+    ) {
+        return ResponseEntity.ok(
+                notificationService.updateMySetting(
+                        getLoginMemberId(),
+                        notificationType,
+                        request
                 )
         );
     }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
+import { UserActionTrigger } from "../components/member/UserMiniProfileModal";
 import ReportModal from "../components/report/ReportModal";
 import {
     createCommunityComment,
@@ -310,7 +311,7 @@ export default function CommunityDetailPage() {
                             </h1>
 
                             <div className="mt-5 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                                <span>{post.nickname}</span>
+                                <UserActionTrigger memberId={post.memberId} nickname={post.nickname} />
                                 <span>{formatDateTime(post.createdAt)}</span>
                                 <span>조회 {post.viewCount}</span>
                                 <span>추천 {post.likeCount}</span>
@@ -539,7 +540,15 @@ function CommentRow({
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p className={`font-bold ${comment.isDeleted ? "text-gray-400" : "text-gray-950"}`}>
-                                {comment.nickname}
+                                {comment.isDeleted ? (
+                                    comment.nickname
+                                ) : (
+                                    <UserActionTrigger
+                                        memberId={comment.memberId}
+                                        nickname={comment.nickname}
+                                        profileImageUrl={comment.profileImageUrl}
+                                    />
+                                )}
                             </p>
                             <p className="mt-1 text-xs text-gray-400">{formatDateTime(comment.createdAt)}</p>
                         </div>

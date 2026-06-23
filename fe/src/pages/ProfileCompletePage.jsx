@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import RegionSelect from "../components/common/RegionSelect";
 import { InfoBadge, StatusBadge } from "../components/walk/WalkBadges";
-import { updateMyProfile, getMyDashboard, verifyMyPassword, withdrawMyAccount } from "../api/member";
+import { updateMyProfile, getMyDashboard, verifyMyPassword, withdrawMyAccount, getMyBlocks, unblockMember } from "../api/member";
+import { getNotificationSettings, updateNotificationSetting } from "../api/notification";
 import { cancelMyWalkParticipation } from "../api/walk";
 import { clearTokens, getAccessToken } from "../utils/token";
 import { isCompleteRegionValue } from "../constants/regions";
@@ -27,6 +28,7 @@ const dashboardTabs = [
     { key: "community", label: "커뮤니티" },
     { key: "reviews", label: "산책 후기" },
     { key: "care", label: "케어" },
+    { key: "settings", label: "설정" },
 ];
 
 const emotionLabels = {
@@ -63,6 +65,15 @@ const analysisLabels = {
     CARE_GUIDE: "맞춤 관리 가이드",
 };
 
+const notificationSettingLabels = {
+    ALL: "전체 알림",
+    WALK_REQUESTED: "산책 신청",
+    WALK_APPROVED: "산책 승인",
+    WALK_REJECTED: "산책 거절",
+    WALK_CANCELED: "산책 취소",
+    CHAT_MESSAGE: "채팅 메시지",
+};
+
 export default function MyPage() {
     const navigate = useNavigate();
 
@@ -80,6 +91,8 @@ export default function MyPage() {
     const [aiAnalyses, setAiAnalyses] = useState([]);
     const [communityPosts, setCommunityPosts] = useState([]);
     const [communityComments, setCommunityComments] = useState([]);
+    const [notificationSettings, setNotificationSettings] = useState([]);
+    const [blockedMembers, setBlockedMembers] = useState([]);
 
     // 입력 폼 상태
     const [form, setForm] = useState(initialForm);
@@ -95,8 +108,12 @@ export default function MyPage() {
         try {
             setIsLoading(true);
 
-            const response = await getMyDashboard();
-            const dashboard = response.data;
+            const [dashboardResponse, notificationSettingResponse, blockedMemberResponse] = await Promise.all([
+                getMyDashboard(),
+                getNotificationSettings(),
+                getMyBlocks(),
+            ]);
+            const dashboard = dashboardResponse.data;
             const nextMember = dashboard.member;
 
             setMember(nextMember);
@@ -112,6 +129,8 @@ export default function MyPage() {
             setAiAnalyses(dashboard.aiAnalyses || []);
             setCommunityPosts(dashboard.communityPosts || []);
             setCommunityComments(dashboard.communityComments || []);
+            setNotificationSettings(notificationSettingResponse.data || []);
+            setBlockedMembers(blockedMemberResponse.data || []);
             setForm({
                 realName: nextMember.realName || "",
                 nickname: nextMember.nickname || "",
@@ -168,6 +187,35 @@ export default function MyPage() {
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "산책 참여 신청 취소에 실패했습니다.");
+        }
+    };
+
+    // 알림 설정 변경
+    const handleNotificationSettingChange = async (notificationType, isEnabled) => {
+        try {
+            const response = await updateNotificationSetting(notificationType, { isEnabled });
+
+            setNotificationSettings((prevSettings) => prevSettings.map((setting) =>
+                setting.notificationType === notificationType ? response.data : setting
+            ));
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "알림 설정 변경에 실패했습니다.");
+        }
+    };
+
+    // 회원 차단 해제
+    const handleUnblockMember = async (memberId) => {
+        if (!window.confirm("차단을 해제할까요?")) {
+            return;
+        }
+
+        try {
+            await unblockMember(memberId);
+            await fetchMyPageData();
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "차단 해제에 실패했습니다.");
         }
     };
 
@@ -539,6 +587,15 @@ export default function MyPage() {
                                     </div>
                                 </DashboardSection>
                             )}
+
+                            {activeDashboardTab === "settings" && (
+                                <SettingsSection
+                                    notificationSettings={notificationSettings}
+                                    blockedMembers={blockedMembers}
+                                    onNotificationChange={handleNotificationSettingChange}
+                                    onUnblock={handleUnblockMember}
+                                />
+                            )}
                         </div>
                     </section>
                 )}
@@ -547,11 +604,86 @@ export default function MyPage() {
     );
 }
 
+// 설정 관리
+function SettingsSection({ notificationSettings, blockedMembers, onNotificationChange, onUnblock }) {
+    return (
+        <section className="grid gap-8 pt-8">
+            <div className="border border-gray-200 p-6">
+                <div className="mb-5">
+                    <p className="text-sm font-bold tracking-[0.3em] text-gray-400">NOTIFICATION</p>
+                    <h2 className="mt-3 text-2xl font-bold text-gray-950">알림 설정</h2>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                    {notificationSettings.map((setting) => (
+                        <label
+                            key={setting.notificationType}
+                            className="flex min-h-16 items-center justify-between gap-4 border border-gray-100 px-4 py-3"
+                        >
+                            <span>
+                                <span className="block text-sm font-bold text-gray-950">
+                                    {notificationSettingLabels[setting.notificationType] || setting.notificationType}
+                                </span>
+                                <span className="mt-1 block text-xs font-bold text-gray-400">{setting.channel}</span>
+                            </span>
+                            <input
+                                type="checkbox"
+                                checked={Boolean(setting.isEnabled)}
+                                onChange={(event) => onNotificationChange(setting.notificationType, event.target.checked)}
+                                className="h-5 w-5 accent-black"
+                            />
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            <div className="border border-gray-200 p-6">
+                <div className="mb-5 flex items-center justify-between gap-4">
+                    <div>
+                        <p className="text-sm font-bold tracking-[0.3em] text-gray-400">BLOCK</p>
+                        <h2 className="mt-3 text-2xl font-bold text-gray-950">차단 회원</h2>
+                    </div>
+                    <span className="text-sm font-bold text-gray-400">{blockedMembers.length}명</span>
+                </div>
+
+                {blockedMembers.length === 0 ? (
+                    <div className="flex h-28 items-center justify-center border border-dashed border-gray-200 text-sm text-gray-400">
+                        차단한 회원이 없습니다.
+                    </div>
+                ) : (
+                    <div className="grid gap-3">
+                        {blockedMembers.map((blockedMember) => (
+                            <div
+                                key={blockedMember.memberBlockId}
+                                className="grid gap-4 border border-gray-100 p-4 md:grid-cols-[1fr_auto] md:items-center"
+                            >
+                                <div className="min-w-0">
+                                    <p className="text-base font-bold text-gray-950">{blockedMember.blockedNickname}</p>
+                                    <p className="mt-1 line-clamp-1 text-sm text-gray-400">
+                                        {blockedMember.reason || "차단 사유 없음"}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => onUnblock(blockedMember.blockedMemberId)}
+                                    className="h-10 border border-gray-200 px-4 text-sm font-bold transition hover:bg-gray-50"
+                                >
+                                    차단 해제
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+}
+
 // 대시보드 탭
 function DashboardTabs({ activeTab, onChange }) {
     return (
         <div className="border-b border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
                 {dashboardTabs.map((tab) => (
                     <button
                         key={tab.key}

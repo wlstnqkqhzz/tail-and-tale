@@ -119,6 +119,23 @@ public class MemberService {
         return MemberDto.DetailResponse.from(member);
     }
 
+    // 회원 미니 프로필 조회
+    public MemberDto.MiniProfileResponse getMiniProfile(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberDto.MiniProfileResponse.from(
+                member,
+                dogRepository.findAllByMemberId(memberId)
+                        .stream()
+                        .filter(dog -> Boolean.TRUE.equals(dog.getIsVerified()))
+                        .findFirst()
+                        .map(dog -> dog.getSize())
+                        .orElse(null),
+                walkParticipantRepository.countByMemberIdAndStatus(memberId, WalkParticipantStatus.APPROVED)
+        );
+    }
+
     // 내 정보 수정
     @Transactional
     public MemberDto.DetailResponse updateMyProfile(Long memberId, MemberDto.UpdateRequest request) {

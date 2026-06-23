@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
-import ReportModal from "../components/report/ReportModal";
+import { UserActionTrigger } from "../components/member/UserMiniProfileModal";
 import { getChatMessages, readChatRoom } from "../api/chat";
 import { readTargetNotifications } from "../api/notification";
-import { createReport } from "../api/report";
 import { useAuth } from "../hooks/useAuth";
 import { getAccessToken } from "../utils/token";
 import { createChatStompClient } from "../utils/stompClient";
@@ -32,9 +31,6 @@ export default function ChatRoomPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
     const [connectionMessage, setConnectionMessage] = useState("연결 준비 중");
-    const [reportTargetMember, setReportTargetMember] = useState(null);
-    const [isReportSubmitting, setIsReportSubmitting] = useState(false);
-
     const walkTitle = location.state?.walkTitle || "산책 채팅방";
     const walkScheduleId = location.state?.walkScheduleId;
 
@@ -172,32 +168,6 @@ export default function ChatRoomPage() {
         }
     };
 
-    // 채팅 상대 신고
-    const handleReportMember = async ({ reason, content }) => {
-        if (!reportTargetMember?.memberId) {
-            return;
-        }
-
-        try {
-            setIsReportSubmitting(true);
-
-            await createReport({
-                targetType: "MEMBER",
-                targetId: reportTargetMember.memberId,
-                reason,
-                content,
-            });
-
-            alert("신고가 접수되었습니다.");
-            setReportTargetMember(null);
-        } catch (error) {
-            console.error(error);
-            alert(error.response?.data?.message || "신고 접수에 실패했습니다.");
-        } finally {
-            setIsReportSubmitting(false);
-        }
-    };
-
     return (
         <>
             <Header />
@@ -262,7 +232,6 @@ export default function ChatRoomPage() {
                                         <ChatMessageItem
                                             message={message}
                                             isMine={message.senderId === member?.memberId}
-                                            onReportMember={(targetMember) => setReportTargetMember(targetMember)}
                                         />
                                     </div>
                                 ))}
@@ -292,13 +261,6 @@ export default function ChatRoomPage() {
                 </section>
             </main>
 
-            <ReportModal
-                isOpen={Boolean(reportTargetMember)}
-                targetLabel={reportTargetMember?.nickname ? `${reportTargetMember.nickname} 회원` : "회원"}
-                isSubmitting={isReportSubmitting}
-                onClose={() => setReportTargetMember(null)}
-                onSubmit={handleReportMember}
-            />
         </>
     );
 }
@@ -326,7 +288,7 @@ function UnreadMessageDivider() {
 }
 
 // 채팅 메시지 아이템
-function ChatMessageItem({ message, isMine, onReportMember }) {
+function ChatMessageItem({ message, isMine }) {
     if (message.messageType === "SYSTEM") {
         return (
             <div className="text-center text-xs font-bold text-gray-400">
@@ -340,19 +302,10 @@ function ChatMessageItem({ message, isMine, onReportMember }) {
             <div className={`max-w-[72%] ${isMine ? "text-right" : "text-left"}`}>
                 {!isMine && (
                     <div className="mb-1 flex items-center gap-2 text-xs font-bold text-gray-500">
-                        <span>{message.senderNickname || "알 수 없음"}</span>
-                        {message.senderId && (
-                            <button
-                                type="button"
-                                onClick={() => onReportMember({
-                                    memberId: message.senderId,
-                                    nickname: message.senderNickname || "알 수 없음",
-                                })}
-                                className="text-red-400 transition hover:text-red-600"
-                            >
-                                신고
-                            </button>
-                        )}
+                        <UserActionTrigger
+                            memberId={message.senderId}
+                            nickname={message.senderNickname || "알 수 없음"}
+                        />
                     </div>
                 )}
 

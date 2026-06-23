@@ -2,14 +2,18 @@ package com.tailandtale.domain.care.dto;
 
 import com.tailandtale.domain.care.entity.AiAnalysisResult;
 import com.tailandtale.domain.care.entity.AnalysisType;
+import com.tailandtale.domain.care.entity.DogEmotion;
+import com.tailandtale.domain.care.entity.HealthStatus;
 import com.tailandtale.domain.care.entity.RiskLevel;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 // AI 분석 요청 및 응답 DTO 정의 클래스
 
@@ -74,5 +78,49 @@ public class AiAnalysisDto {
         private EmotionDiaryDto.SummaryResponse emotionSummary;
         private HealthRecordDto.SummaryResponse healthSummary;
         private WalkRecordDto.SummaryResponse walkSummary;
+        private CareTrendResponse trend;
+    }
+
+    // 케어 그래프 추세 응답 DTO
+    @Getter
+    @Builder
+    public static class CareTrendResponse {
+
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private List<DailyWalkTrend> walkTrend;
+        private List<DailyEmotionTrend> emotionTrend;
+        private List<DailyHealthTrend> healthTrend;
+    }
+
+    // 일자별 산책 추세 DTO
+    @Getter
+    @Builder
+    public static class DailyWalkTrend {
+
+        private LocalDate date;
+        private Long count;
+        private Integer totalDurationMinutes;
+        private BigDecimal totalDistanceKm;
+    }
+
+    // 일자별 감정 추세 DTO
+    @Getter
+    @Builder
+    public static class DailyEmotionTrend {
+
+        private LocalDate date;
+        private DogEmotion emotion;
+        private Integer conditionLevel;
+    }
+
+    // 일자별 건강 추세 DTO
+    @Getter
+    @Builder
+    public static class DailyHealthTrend {
+
+        private LocalDate date;
+        private BigDecimal weight;
+        private HealthStatus healthStatus;
     }
 }

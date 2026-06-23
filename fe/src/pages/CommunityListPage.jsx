@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/layout/Header";
+import { UserActionTrigger } from "../components/member/UserMiniProfileModal";
 import { getCommunityPosts } from "../api/community";
 import { getAccessToken } from "../utils/token";
 
@@ -287,7 +288,7 @@ export default function CommunityListPage() {
                                                     isNotice ? "font-semibold text-gray-700" : "text-gray-600"
                                                 }`}
                                             >
-                                                {post.nickname}
+                                                <UserActionTrigger memberId={post.memberId} nickname={post.nickname} />
                                             </td>
                                             <td
                                                 className={`px-4 py-4 text-center ${

@@ -8,6 +8,7 @@ import com.tailandtale.domain.chat.dto.ChatDto;
 import com.tailandtale.domain.community.dto.CommunityCommentDto;
 import com.tailandtale.domain.community.dto.CommunityPostDto;
 import com.tailandtale.domain.dog.dto.DogDto;
+import com.tailandtale.domain.dog.entity.DogSize;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
 import com.tailandtale.domain.walk.dto.WalkReviewDto;
@@ -103,6 +104,38 @@ public class MemberDto {
                     .isRealNameVerified(member.getIsRealNameVerified())
                     .role(member.getRole().name())
                     .status(member.getStatus().name())
+                    .build();
+        }
+    }
+
+    // 회원 미니 프로필 응답 DTO
+    @Getter
+    @Builder
+    public static class MiniProfileResponse {
+
+        private Long memberId;
+        private String nickname;
+        private String profileImageUrl;
+        private String region;
+        private String introduction;
+        private DogSize representativeDogSize;
+        private Long walkParticipationCount;
+        private Boolean reportHistoryVisible;
+
+        public static MiniProfileResponse from(
+                Member member,
+                DogSize representativeDogSize,
+                long walkParticipationCount
+        ) {
+            return MiniProfileResponse.builder()
+                    .memberId(member.getId())
+                    .nickname(member.getNickname())
+                    .profileImageUrl(member.getProfileImageUrl())
+                    .region(member.getRegion())
+                    .introduction(member.getIntroduction())
+                    .representativeDogSize(representativeDogSize)
+                    .walkParticipationCount(walkParticipationCount)
+                    .reportHistoryVisible(false)
                     .build();
         }
     }
