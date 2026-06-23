@@ -13,8 +13,10 @@ import com.tailandtale.domain.member.dto.LoginFormDto;
 import com.tailandtale.domain.member.dto.MemberDto;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.MemberStatus;
+import com.tailandtale.domain.member.entity.OAuth2AuthCode;
 import com.tailandtale.domain.member.entity.RefreshToken;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.repository.OAuth2AuthCodeRepository;
 import com.tailandtale.domain.member.repository.RefreshTokenRepository;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
@@ -26,6 +28,7 @@ import com.tailandtale.global.exception.AuthErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.MemberErrorCode;
 import com.tailandtale.global.jwt.JwtProvider;
+import com.tailandtale.global.security.TokenHashUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -56,6 +59,12 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final OAuth2AuthCodeRepository oAuth2AuthCodeRepository;
+
+    // Refresh Token 만료 시간 조회
+    public long getRefreshTokenExpiration() {
+        return jwtProvider.getRefreshTokenExpiration();
+    }
 
     // 로그인
     @Transactional(noRollbackFor = CustomException.class)
@@ -70,18 +79,7 @@ public class MemberService {
         member.recordLogin();
 
         String accessToken = jwtProvider.createAccessToken(member.getId());
-        String refreshToken = jwtProvider.createRefreshToken(member.getId());
-
-        RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .member(member)
-                .token(refreshToken)
-                .deviceId(null)
-                .userAgent(null)
-                .ipAddress(null)
-                .expiresAt(LocalDateTime.now().plusSeconds(jwtProvider.getRefreshTokenExpiration()))
-                .build();
-
-        refreshTokenRepository.save(refreshTokenEntity);
+        String refreshToken = issueRefreshToken(member, null, null, null);
 
         return LoginFormDto.TokenResponse.builder()
                 .grantType("Bearer")
@@ -221,8 +219,10 @@ public class MemberService {
 
     // Refresh Token 재발급
     @Transactional(noRollbackFor = CustomException.class)
-    public LoginFormDto.TokenResponse reissue(LoginFormDto.ReissueRequest request) {
-        String refreshToken = request.getRefreshToken();
+    public LoginFormDto.TokenResponse reissue(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new CustomException(AuthErrorCode.LOGIN_FAILED);
+        }
 
         if (!jwtProvider.validateRefreshToken(refreshToken)) {
             throw new CustomException(AuthErrorCode.LOGIN_FAILED);
@@ -235,7 +235,7 @@ public class MemberService {
 
         validateLoginAllowed(member);
 
-        RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
+        RefreshToken savedRefreshToken = refreshTokenRepository.findByTokenHash(TokenHashUtil.sha256(refreshToken))
                 .orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
 
         // 토큰 소유 회원 검증
@@ -243,25 +243,20 @@ public class MemberService {
             throw new CustomException(AuthErrorCode.LOGIN_FAILED);
         }
 
-        if (savedRefreshToken.getRevokedAt() != null) {
+        if (savedRefreshToken.getRevokedAt() != null
+                || !savedRefreshToken.getExpiresAt().isAfter(LocalDateTime.now())) {
             throw new CustomException(AuthErrorCode.LOGIN_FAILED);
         }
 
         String newAccessToken = jwtProvider.createAccessToken(memberId);
-        String newRefreshToken = jwtProvider.createRefreshToken(memberId);
 
         savedRefreshToken.revoke();
-
-        RefreshToken newRefreshTokenEntity = RefreshToken.builder()
-                .member(member)
-                .token(newRefreshToken)
-                .deviceId(savedRefreshToken.getDeviceId())
-                .userAgent(savedRefreshToken.getUserAgent())
-                .ipAddress(savedRefreshToken.getIpAddress())
-                .expiresAt(LocalDateTime.now().plusSeconds(jwtProvider.getRefreshTokenExpiration()))
-                .build();
-
-        refreshTokenRepository.save(newRefreshTokenEntity);
+        String newRefreshToken = issueRefreshToken(
+                member,
+                savedRefreshToken.getDeviceId(),
+                savedRefreshToken.getUserAgent(),
+                savedRefreshToken.getIpAddress()
+        );
 
         return LoginFormDto.TokenResponse.builder()
                 .grantType("Bearer")
@@ -288,14 +283,16 @@ public class MemberService {
 
     // 로그아웃
     @Transactional
-    public void logout(LoginFormDto.LogoutRequest request) {
-        String refreshToken = request.getRefreshToken();
+    public void logout(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new CustomException(AuthErrorCode.LOGIN_FAILED);
+        }
 
         if (!jwtProvider.validateRefreshToken(refreshToken)) {
             throw new CustomException(AuthErrorCode.LOGIN_FAILED);
         }
 
-        RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
+        RefreshToken savedRefreshToken = refreshTokenRepository.findByTokenHash(TokenHashUtil.sha256(refreshToken))
                 .orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
 
         if (savedRefreshToken.getRevokedAt() != null) {
@@ -303,6 +300,35 @@ public class MemberService {
         }
 
         savedRefreshToken.revoke();
+    }
+
+    // OAuth2 인증 코드 교환
+    @Transactional(noRollbackFor = CustomException.class)
+    public LoginFormDto.TokenResponse exchangeOAuth2Code(LoginFormDto.OAuth2CodeExchangeRequest request) {
+        OAuth2AuthCode authCode = oAuth2AuthCodeRepository.findByCodeHash(TokenHashUtil.sha256(request.getCode()))
+                .orElseThrow(() -> new CustomException(AuthErrorCode.LOGIN_FAILED));
+
+        if (!authCode.isUsable(LocalDateTime.now())) {
+            throw new CustomException(AuthErrorCode.LOGIN_FAILED);
+        }
+
+        Member member = authCode.getMember();
+        validateLoginAllowed(member);
+        authCode.use();
+
+        String accessToken = jwtProvider.createAccessToken(member.getId());
+        String refreshToken = issueRefreshToken(
+                member,
+                null,
+                authCode.getUserAgent(),
+                authCode.getIpAddress()
+        );
+
+        return LoginFormDto.TokenResponse.builder()
+                .grantType("Bearer")
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     // 산책 일정 응답 생성
@@ -370,5 +396,28 @@ public class MemberService {
         if (member.getPassword() == null || !passwordEncoder.matches(password, member.getPassword())) {
             throw new CustomException(AuthErrorCode.INVALID_PASSWORD);
         }
+    }
+
+    // Refresh Token 발급 및 저장
+    private String issueRefreshToken(
+            Member member,
+            String deviceId,
+            String userAgent,
+            String ipAddress
+    ) {
+        String refreshToken = jwtProvider.createRefreshToken(member.getId());
+
+        refreshTokenRepository.save(
+                RefreshToken.builder()
+                        .member(member)
+                        .tokenHash(TokenHashUtil.sha256(refreshToken))
+                        .deviceId(deviceId)
+                        .userAgent(userAgent)
+                        .ipAddress(ipAddress)
+                        .expiresAt(LocalDateTime.now().plusSeconds(jwtProvider.getRefreshTokenExpiration()))
+                        .build()
+        );
+
+        return refreshToken;
     }
 }

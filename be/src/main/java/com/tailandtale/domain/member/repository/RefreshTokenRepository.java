@@ -15,7 +15,7 @@ import java.util.Optional;
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     // Refresh Token 조회
-    Optional<RefreshToken> findByToken(String token);
+    Optional<RefreshToken> findByTokenHash(String tokenHash);
 
     // 회원 Refresh Token 전체 폐기
     @Modifying(clearAutomatically = true)

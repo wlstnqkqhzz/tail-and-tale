@@ -1,6 +1,6 @@
 package com.tailandtale.domain.member.dto;
 
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,25 +25,27 @@ public class LoginFormDto {
     @Getter
     @Builder
     public static class TokenResponse {
-
         private String grantType;
         private String accessToken;
+
+        @JsonIgnore
         private String refreshToken;
     }
 
-    // Refresh Token 재발급 요청 DTO
+    // OAuth2 인증 코드 응답 DTO
     @Getter
-    @NoArgsConstructor
-    public static class ReissueRequest {
-        @NotBlank(message = "Refresh Token은 필수입니다.")
-        private String refreshToken;
+    @Builder
+    public static class OAuth2CodeResponse {
+        private String code;
+        private String status;
+        private String provider;
     }
 
-    // 로그아웃 DTO
+    // OAuth2 인증 코드 교환 요청 DTO
     @Getter
     @NoArgsConstructor
-    public static class LogoutRequest {
-        @NotBlank(message = "Refresh Token은 필수입니다.")
-        private String refreshToken;
+    public static class OAuth2CodeExchangeRequest {
+        @NotBlank(message = "OAuth2 인증 코드가 필수입니다.")
+        private String code;
     }
 }

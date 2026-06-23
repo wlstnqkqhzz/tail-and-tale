@@ -10,6 +10,7 @@ public final class SecurityPath {
             "/api/members/signup",
             "/api/members/login",
             "/api/members/reactivate",
+            "/api/members/oauth2/code/exchange",
             "/api/members/check-email",
             "/api/members/check-nickname",
             "/api/members/reissue",

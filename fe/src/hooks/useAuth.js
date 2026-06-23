@@ -1,23 +1,17 @@
 // 인증 관련 Hook
 
 import { useEffect, useState } from "react";
-import { clearTokens, getAccessToken, getRefreshToken } from "../utils/token";
+import { clearTokens, getAccessToken } from "../utils/token";
 import { getMyInfo } from "../api/member";
 
 // 로그인 회원 정보 조회 Hook
 export function useAuth() {
-    const [isLoading, setIsLoading] = useState(() => Boolean(getAccessToken() || getRefreshToken()));
-    const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getAccessToken() || getRefreshToken()));
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getAccessToken()));
     const [member, setMember] = useState(null);
 
     useEffect(() => {
         let isMounted = true;
-        const accessToken = getAccessToken();
-        const refreshToken = getRefreshToken();
-
-        if (!accessToken && !refreshToken) {
-            return;
-        }
 
         const fetchMember = async () => {
             try {

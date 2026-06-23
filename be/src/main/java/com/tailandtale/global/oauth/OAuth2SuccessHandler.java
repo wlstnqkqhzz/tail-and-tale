@@ -3,12 +3,12 @@ package com.tailandtale.global.oauth;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.MemberStatus;
 import com.tailandtale.domain.member.entity.OAuthAccount;
+import com.tailandtale.domain.member.entity.OAuth2AuthCode;
 import com.tailandtale.domain.member.entity.OAuthProvider;
-import com.tailandtale.domain.member.entity.RefreshToken;
 import com.tailandtale.domain.member.repository.MemberRepository;
 import com.tailandtale.domain.member.repository.OAuthAccountRepository;
-import com.tailandtale.domain.member.repository.RefreshTokenRepository;
-import com.tailandtale.global.jwt.JwtProvider;
+import com.tailandtale.domain.member.repository.OAuth2AuthCodeRepository;
+import com.tailandtale.global.security.TokenHashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 // OAuth2 로그인 성공 Handler
 
@@ -43,8 +44,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final MemberRepository memberRepository;
     private final OAuthAccountRepository oAuthAccountRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final JwtProvider jwtProvider;
+    private final OAuth2AuthCodeRepository oAuth2AuthCodeRepository;
 
     // =========================
     // OAuth 로그인 성공 처리
@@ -99,17 +99,17 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         member.recordLogin();
 
-        String accessToken = jwtProvider.createAccessToken(member.getId());
-        String refreshToken = jwtProvider.createRefreshToken(member.getId());
+        String code = UUID.randomUUID().toString();
 
-        refreshTokenRepository.save(
-                RefreshToken.builder()
+        oAuth2AuthCodeRepository.save(
+                OAuth2AuthCode.builder()
                         .member(member)
-                        .token(refreshToken)
-                        .deviceId(null)
+                        .codeHash(TokenHashUtil.sha256(code))
+                        .provider(provider)
+                        .redirectUri(null)
                         .userAgent(request.getHeader("User-Agent"))
                         .ipAddress(request.getRemoteAddr())
-                        .expiresAt(LocalDateTime.now().plusSeconds(jwtProvider.getRefreshTokenExpiration()))
+                        .expiresAt(LocalDateTime.now().plusMinutes(3))
                         .build()
         );
 
@@ -117,8 +117,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         response.sendRedirect(
                 frontendBaseUrl + redirectPath
-                        + "?accessToken=" + encode(accessToken)
-                        + "&refreshToken=" + encode(refreshToken)
+                        + "?code=" + encode(code)
                         + "&status=" + member.getStatus().name()
                         + "&provider=" + provider.name()
         );

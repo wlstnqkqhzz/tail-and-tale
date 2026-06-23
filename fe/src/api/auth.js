@@ -15,11 +15,12 @@ export const redirectToOAuth = (provider) => {
     window.location.href = oauthLogin[provider];
 };
 
+// OAuth2 인증 코드 교환
+export const exchangeOAuth2Code = (code) => {
+    return api.post("/api/members/oauth2/code/exchange", { code });
+};
+
 // 로그아웃
 export const logout = () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-
-    return api.post("/api/members/logout", {
-        refreshToken,
-    });
+    return api.post("/api/members/logout");
 };

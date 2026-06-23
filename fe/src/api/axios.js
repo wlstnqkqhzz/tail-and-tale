@@ -1,10 +1,11 @@
 import axios from "axios";
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../utils/token";
+import { clearTokens, getAccessToken, setTokens } from "../utils/token";
 
 // Axios 공통 설정
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
+    withCredentials: true,
 });
 
 let isReissuing = false;
@@ -14,6 +15,7 @@ const REISSUE_SKIP_URLS = [
     "/api/members/signup",
     "/api/members/reactivate",
     "/api/members/reissue",
+    "/api/members/oauth2/code/exchange",
     "/api/members/logout",
 ];
 
@@ -37,13 +39,6 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        const refreshToken = getRefreshToken();
-
-        if (!refreshToken) {
-            clearTokens();
-            return Promise.reject(error);
-        }
-
         originalRequest._retry = true;
 
         if (isReissuing) {
@@ -63,11 +58,11 @@ api.interceptors.response.use(
 
             const response = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/api/members/reissue`,
-                { refreshToken }
+                null,
+                { withCredentials: true }
             );
             const nextTokens = {
                 accessToken: response.data.accessToken,
-                refreshToken: response.data.refreshToken,
             };
 
             setTokens(nextTokens);

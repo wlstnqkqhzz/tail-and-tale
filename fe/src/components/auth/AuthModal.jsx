@@ -82,7 +82,6 @@ export default function AuthModal({ onClose }) {
             });
 
             localStorage.setItem("accessToken", response.data.accessToken);
-            localStorage.setItem("refreshToken", response.data.refreshToken);
 
             window.location.reload();
         } catch (error) {
