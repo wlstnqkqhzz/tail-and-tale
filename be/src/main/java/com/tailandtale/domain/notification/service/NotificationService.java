@@ -96,20 +96,37 @@ public class NotificationService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        NotificationSetting notificationSetting = notificationSettingRepository.findByMemberIdAndNotificationTypeAndChannel(
-                memberId,
-                notificationType,
-                NotificationChannel.WEB
-        ).orElseGet(() -> NotificationSetting.create(
+        // 전체 알림은 모든 개별 알림을 한 번에 변경
+        if (notificationType == NotificationSettingType.ALL) {
+            NotificationSetting allSetting = null;
+
+            for (NotificationSettingType settingType : NotificationSettingType.values()) {
+                NotificationSetting savedSetting = saveNotificationSetting(
+                        member,
+                        settingType,
+                        request.getIsEnabled()
+                );
+
+                if (settingType == NotificationSettingType.ALL) {
+                    allSetting = savedSetting;
+                }
+            }
+
+            return NotificationDto.SettingResponse.from(allSetting);
+        }
+
+        NotificationSetting notificationSetting = saveNotificationSetting(
                 member,
                 notificationType,
-                NotificationChannel.WEB,
-                true
-        ));
+                request.getIsEnabled()
+        );
 
-        notificationSetting.updateEnabled(request.getIsEnabled());
+        // 개별 알림을 다시 켜는 경우 전체 알림도 함께 활성화
+        if (Boolean.TRUE.equals(request.getIsEnabled())) {
+            saveNotificationSetting(member, NotificationSettingType.ALL, true);
+        }
 
-        return NotificationDto.SettingResponse.from(notificationSettingRepository.save(notificationSetting));
+        return NotificationDto.SettingResponse.from(notificationSetting);
     }
 
     // 내 알림 목록 조회
@@ -177,5 +194,27 @@ public class NotificationService {
                 )
                 .map(NotificationSetting::getIsEnabled)
                 .orElse(true);
+    }
+
+    // 알림 설정 저장
+    private NotificationSetting saveNotificationSetting(
+            Member member,
+            NotificationSettingType notificationType,
+            Boolean isEnabled
+    ) {
+        NotificationSetting notificationSetting = notificationSettingRepository.findByMemberIdAndNotificationTypeAndChannel(
+                member.getId(),
+                notificationType,
+                NotificationChannel.WEB
+        ).orElseGet(() -> NotificationSetting.create(
+                member,
+                notificationType,
+                NotificationChannel.WEB,
+                true
+        ));
+
+        notificationSetting.updateEnabled(isEnabled);
+
+        return notificationSettingRepository.save(notificationSetting);
     }
 }
