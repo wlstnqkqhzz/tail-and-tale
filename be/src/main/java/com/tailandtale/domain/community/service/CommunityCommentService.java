@@ -7,6 +7,7 @@ import com.tailandtale.domain.community.repository.CommunityCommentRepository;
 import com.tailandtale.domain.community.repository.CommunityPostRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.MemberBlockService;
 import com.tailandtale.global.exception.CommunityErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.MemberErrorCode;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 // 커뮤니티 댓글 Service
 
@@ -25,6 +28,7 @@ public class CommunityCommentService {
     private final CommunityCommentRepository communityCommentRepository;
     private final CommunityPostRepository communityPostRepository;
     private final MemberRepository memberRepository;
+    private final MemberBlockService memberBlockService;
 
     // 댓글 작성
     @Transactional
@@ -35,7 +39,10 @@ public class CommunityCommentService {
     ) {
         Member member = findMember(memberId);
         CommunityPost post = findPost(communityPostId);
+        validateVisiblePost(post, memberId);
+
         CommunityComment parentComment = findParentCommentOrNull(request.getParentCommentId(), communityPostId);
+        validateVisibleParentComment(parentComment, memberId);
 
         CommunityComment comment = CommunityComment.create(
                 post,
@@ -54,10 +61,13 @@ public class CommunityCommentService {
 
     // 댓글 목록 조회
     public List<CommunityCommentDto.Response> getComments(Long memberId, Long communityPostId) {
-        findPost(communityPostId);
+        CommunityPost post = findPost(communityPostId);
+        validateVisiblePost(post, memberId);
 
+        Set<Long> hiddenCommentIds = new HashSet<>();
         return communityCommentRepository.findAllByCommunityPostIdOrderByCreatedAtAsc(communityPostId)
                 .stream()
+                .filter(comment -> isVisibleComment(comment, memberId, hiddenCommentIds))
                 .map(comment -> CommunityCommentDto.Response.from(comment, memberId))
                 .toList();
     }
@@ -144,5 +154,42 @@ public class CommunityCommentService {
         if (Boolean.TRUE.equals(comment.getIsDeleted())) {
             throw new CustomException(CommunityErrorCode.COMMUNITY_COMMENT_NOT_FOUND);
         }
+    }
+
+    // 차단 관계 게시글 노출 여부 검증
+    private void validateVisiblePost(CommunityPost post, Long memberId) {
+        if (post.isWriter(memberId)) {
+            return;
+        }
+
+        if (memberBlockService.isBlockedBetween(memberId, post.getMember().getId())) {
+            throw new CustomException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND);
+        }
+    }
+
+    // 차단 관계 부모 댓글 검증
+    private void validateVisibleParentComment(CommunityComment parentComment, Long memberId) {
+        if (parentComment == null || parentComment.isWriter(memberId)) {
+            return;
+        }
+
+        if (memberBlockService.isBlockedBetween(memberId, parentComment.getMember().getId())) {
+            throw new CustomException(CommunityErrorCode.COMMUNITY_COMMENT_NOT_FOUND);
+        }
+    }
+
+    // 차단 관계 댓글 노출 여부 확인
+    private boolean isVisibleComment(CommunityComment comment, Long memberId, Set<Long> hiddenCommentIds) {
+        boolean hiddenParent = comment.getParentComment() != null
+                && hiddenCommentIds.contains(comment.getParentComment().getId());
+        boolean hiddenWriter = !comment.isWriter(memberId)
+                && memberBlockService.isBlockedBetween(memberId, comment.getMember().getId());
+
+        if (hiddenParent || hiddenWriter) {
+            hiddenCommentIds.add(comment.getId());
+            return false;
+        }
+
+        return true;
     }
 }

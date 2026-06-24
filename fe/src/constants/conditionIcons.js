@@ -1,8 +1,8 @@
-import condition1Icon from "../assets/icons/condition-1.svg";
-import condition2Icon from "../assets/icons/condition-2.svg";
-import condition3Icon from "../assets/icons/condition-3.svg";
-import condition4Icon from "../assets/icons/condition-4.svg";
-import condition5Icon from "../assets/icons/condition-5.svg";
+import condition1Icon from "../assets/icons/conditions/condition-1.svg";
+import condition2Icon from "../assets/icons/conditions/condition-2.svg";
+import condition3Icon from "../assets/icons/conditions/condition-3.svg";
+import condition4Icon from "../assets/icons/conditions/condition-4.svg";
+import condition5Icon from "../assets/icons/conditions/condition-5.svg";
 
 export const CONDITION_ICONS = {
     1: condition1Icon,

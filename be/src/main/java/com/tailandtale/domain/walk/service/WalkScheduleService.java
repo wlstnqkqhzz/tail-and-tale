@@ -5,6 +5,7 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.chat.service.ChatService;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.MemberBlockService;
 import com.tailandtale.domain.member.service.TrustScoreService;
 import com.tailandtale.domain.walk.dto.WalkScheduleDto;
 import com.tailandtale.domain.walk.entity.WalkParticipantStatus;
@@ -37,6 +38,7 @@ public class WalkScheduleService {
     private final DogRepository dogRepository;
     private final ChatService chatService;
     private final TrustScoreService trustScoreService;
+    private final MemberBlockService memberBlockService;
 
     // 산책 일정 생성
     @Transactional
@@ -178,6 +180,7 @@ public class WalkScheduleService {
 
         return walkScheduleRepository.search(condition)
                 .stream()
+                .filter(walkSchedule -> isVisibleToMember(walkSchedule, memberId))
                 .map(walkSchedule -> toDetailResponse(walkSchedule, memberId))
                 .filter(response -> !Boolean.TRUE.equals(condition.getRecruitableOnly()) || Boolean.TRUE.equals(response.getIsRecruitable()))
                 .toList();
@@ -189,6 +192,8 @@ public class WalkScheduleService {
         completeExpiredSchedules();
 
         WalkSchedule walkSchedule = getScheduleEntity(walkScheduleId);
+
+        validateVisibleToMember(walkSchedule, memberId);
 
         return toDetailResponse(walkSchedule, memberId);
     }
@@ -233,6 +238,22 @@ public class WalkScheduleService {
         return !walkSchedule.getScheduledAt()
                 .plusMinutes(expectedDurationMinutes)
                 .isAfter(now);
+    }
+
+    // 차단 관계 산책 일정 노출 여부 확인
+    private boolean isVisibleToMember(WalkSchedule walkSchedule, Long memberId) {
+        if (walkSchedule.getHostMember().getId().equals(memberId)) {
+            return true;
+        }
+
+        return !memberBlockService.isBlockedBetween(memberId, walkSchedule.getHostMember().getId());
+    }
+
+    // 차단 관계 산책 일정 접근 제한
+    private void validateVisibleToMember(WalkSchedule walkSchedule, Long memberId) {
+        if (!isVisibleToMember(walkSchedule, memberId)) {
+            throw new CustomException(WalkScheduleErrorCode.WALK_SCHEDULE_NOT_FOUND);
+        }
     }
 
     // 반려견 Entity 조회

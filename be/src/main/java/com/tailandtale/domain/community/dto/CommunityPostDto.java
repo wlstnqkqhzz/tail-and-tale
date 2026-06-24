@@ -84,6 +84,10 @@ public class CommunityPostDto {
         private LocalDateTime createdAt;
 
         public static ListResponse from(CommunityPost post) {
+            return from(post, post.getCommentCount());
+        }
+
+        public static ListResponse from(CommunityPost post, Integer commentCount) {
             return ListResponse.builder()
                     .communityPostId(post.getId())
                     .memberId(post.getMember().getId())
@@ -94,7 +98,7 @@ public class CommunityPostDto {
                     .title(post.getTitle())
                     .viewCount(post.getViewCount())
                     .likeCount(post.getLikeCount())
-                    .commentCount(post.getCommentCount())
+                    .commentCount(commentCount)
                     .createdAt(post.getCreatedAt())
                     .build();
         }
@@ -126,6 +130,10 @@ public class CommunityPostDto {
         }
 
         public static Response from(CommunityPost post, Long loginMemberId, Boolean isLiked) {
+            return from(post, loginMemberId, isLiked, post.getCommentCount());
+        }
+
+        public static Response from(CommunityPost post, Long loginMemberId, Boolean isLiked, Integer commentCount) {
             return Response.builder()
                     .communityPostId(post.getId())
                     .memberId(post.getMember().getId())
@@ -137,7 +145,7 @@ public class CommunityPostDto {
                     .content(post.getContent())
                     .viewCount(post.getViewCount())
                     .likeCount(post.getLikeCount())
-                    .commentCount(post.getCommentCount())
+                    .commentCount(commentCount)
                     .isLiked(isLiked)
                     .isWriter(post.isWriter(loginMemberId))
                     .linkedWalkReview(LinkedWalkReviewResponse.from(post.getWalkReview()))

@@ -37,9 +37,6 @@ public class Badge extends BaseEntity {
     private String description;
 
     // 뱃지 아이콘 URL
-    @Column(name = "icon_url", length = 500)
-    private String iconUrl;
-
     // 획득 조건 유형
     @Enumerated(EnumType.STRING)
     @Column(name = "condition_type", nullable = false)

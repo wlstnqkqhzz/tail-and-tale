@@ -115,6 +115,7 @@ public class AdminService {
         validateAdmin(adminMemberId);
 
         Page<CommunityPost> postPage = communityPostRepository.search(
+                null,
                 category == null ? null : category.name(),
                 normalizeKeyword(keyword),
                 normalizeSort(sort),

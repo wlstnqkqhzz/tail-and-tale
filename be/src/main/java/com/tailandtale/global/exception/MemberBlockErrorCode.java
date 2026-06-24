@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum MemberBlockErrorCode implements BaseErrorCode {
     CANNOT_BLOCK_SELF(HttpStatus.BAD_REQUEST, "본인은 차단할 수 없습니다."),
-    MEMBER_BLOCKED(HttpStatus.FORBIDDEN, "차단 관계가 있는 회원입니다."),
+    MEMBER_BLOCKED(HttpStatus.FORBIDDEN, "요청을 처리할 수 없습니다."),
     MEMBER_BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "회원 차단 정보를 찾을 수 없습니다.");
 
     private final HttpStatus status;

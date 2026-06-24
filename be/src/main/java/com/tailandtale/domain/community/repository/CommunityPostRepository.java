@@ -25,6 +25,19 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
                     join member m on p.member_id = m.member_id
                     where (:category is null or p.category = :category)
                       and (
+                            :viewerMemberId is null
+                            or p.member_id = :viewerMemberId
+                            or not exists (
+                                select 1
+                                from member_block b
+                                where b.unblocked_at is null
+                                  and (
+                                        (b.blocker_member_id = :viewerMemberId and b.blocked_member_id = p.member_id)
+                                        or (b.blocker_member_id = p.member_id and b.blocked_member_id = :viewerMemberId)
+                                  )
+                            )
+                      )
+                      and (
                             :keyword is null
                             or lower(p.title) like lower(concat('%', :keyword, '%'))
                             or lower(p.content) like lower(concat('%', :keyword, '%'))
@@ -41,6 +54,19 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
                     join member m on p.member_id = m.member_id
                     where (:category is null or p.category = :category)
                       and (
+                            :viewerMemberId is null
+                            or p.member_id = :viewerMemberId
+                            or not exists (
+                                select 1
+                                from member_block b
+                                where b.unblocked_at is null
+                                  and (
+                                        (b.blocker_member_id = :viewerMemberId and b.blocked_member_id = p.member_id)
+                                        or (b.blocker_member_id = p.member_id and b.blocked_member_id = :viewerMemberId)
+                                  )
+                            )
+                      )
+                      and (
                             :keyword is null
                             or lower(p.title) like lower(concat('%', :keyword, '%'))
                             or lower(p.content) like lower(concat('%', :keyword, '%'))
@@ -50,6 +76,7 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             nativeQuery = true
     )
     Page<CommunityPost> search(
+            @Param("viewerMemberId") Long viewerMemberId,
             @Param("category") String category,
             @Param("keyword") String keyword,
             @Param("sort") String sort,

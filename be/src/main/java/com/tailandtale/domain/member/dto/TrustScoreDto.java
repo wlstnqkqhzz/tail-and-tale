@@ -28,7 +28,6 @@ public class TrustScoreDto {
         private String code;
         private String name;
         private String description;
-        private String iconUrl;
         private String earnedReason;
         private LocalDateTime earnedAt;
 
@@ -38,7 +37,6 @@ public class TrustScoreDto {
                     .code(memberBadge.getBadge().getCode().name())
                     .name(memberBadge.getBadge().getName())
                     .description(memberBadge.getBadge().getDescription())
-                    .iconUrl(memberBadge.getBadge().getIconUrl())
                     .earnedReason(memberBadge.getEarnedReason())
                     .earnedAt(memberBadge.getEarnedAt())
                     .build();

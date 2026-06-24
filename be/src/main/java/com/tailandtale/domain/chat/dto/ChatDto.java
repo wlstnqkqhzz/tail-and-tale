@@ -24,9 +24,14 @@ public class ChatDto {
         private ChatRoomStatus status;
         private ChatRoomMemberRole myRole;
         private Long lastReadMessageId;
+        private Boolean isInteractionBlocked;
         private MessageResponse lastMessage;
 
         public static RoomResponse from(ChatRoomMember chatRoomMember, ChatMessage lastMessage) {
+            return from(chatRoomMember, lastMessage, false);
+        }
+
+        public static RoomResponse from(ChatRoomMember chatRoomMember, ChatMessage lastMessage, Boolean isInteractionBlocked) {
             ChatRoom chatRoom = chatRoomMember.getChatRoom();
 
             return RoomResponse.builder()
@@ -36,6 +41,7 @@ public class ChatDto {
                     .status(chatRoom.getStatus())
                     .myRole(chatRoomMember.getRole())
                     .lastReadMessageId(chatRoomMember.getLastReadMessageId())
+                    .isInteractionBlocked(Boolean.TRUE.equals(isInteractionBlocked))
                     .lastMessage(lastMessage == null ? null : MessageResponse.from(lastMessage))
                     .build();
         }
@@ -62,6 +68,7 @@ public class ChatDto {
     @Builder
     public static class MessageListResponse {
         private Long lastReadMessageId;
+        private Boolean isInteractionBlocked;
         private List<MessageResponse> messages;
     }
 

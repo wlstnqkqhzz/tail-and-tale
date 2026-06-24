@@ -4,6 +4,7 @@ import Header from "../../components/layout/Header";
 import { blockMember, getMemberMiniProfile } from "../../api/member";
 import { createReport } from "../../api/report";
 import ReportModal from "../../components/report/ReportModal";
+import { getBadgeFallbackLabel, getBadgeIcon } from "../../constants/badgeIcons";
 import { formatDogSize } from "../../utils/walkFormat";
 
 // 공개 회원 프로필 페이지
@@ -183,18 +184,21 @@ export default function MemberProfilePage() {
 
                             {profile.badges?.length > 0 ? (
                                 <div className="grid gap-3 md:grid-cols-2">
-                                    {profile.badges.map((badge) => (
+                                    {profile.badges.map((badge) => {
+                                        const badgeIcon = getBadgeIcon(badge.code);
+
+                                        return (
                                         <div key={badge.badgeId} className="border border-emerald-100 bg-emerald-50/50 p-5">
                                             <div className="flex items-start gap-4">
                                                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-xl font-black text-emerald-600">
-                                                    {badge.iconUrl ? (
+                                                    {badgeIcon ? (
                                                         <img
-                                                            src={badge.iconUrl}
+                                                            src={badgeIcon}
                                                             alt={badge.name}
                                                             className="h-full w-full rounded-full object-cover"
                                                         />
                                                     ) : (
-                                                        "B"
+                                                        getBadgeFallbackLabel(badge.name)
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
@@ -205,7 +209,8 @@ export default function MemberProfilePage() {
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="border border-gray-200 p-8 text-sm text-gray-400">

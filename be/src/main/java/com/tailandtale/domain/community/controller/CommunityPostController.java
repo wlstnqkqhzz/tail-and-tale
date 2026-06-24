@@ -43,6 +43,7 @@ public class CommunityPostController {
 
         return ResponseEntity.ok(
                 communityPostService.getPosts(
+                        getLoginMemberId(),
                         category,
                         keyword,
                         sort,

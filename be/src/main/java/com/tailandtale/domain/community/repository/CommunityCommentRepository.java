@@ -29,6 +29,34 @@ public interface CommunityCommentRepository extends JpaRepository<CommunityComme
     // 게시글별 댓글 삭제
     void deleteAllByCommunityPostId(Long communityPostId);
 
+    // 차단 관계를 제외한 게시글별 댓글 수 조회
+    @Query(
+            value = """
+                    select count(*)
+                    from post_comment c
+                    where c.community_post_id = :communityPostId
+                      and c.is_deleted = false
+                      and (
+                            :viewerMemberId is null
+                            or c.member_id = :viewerMemberId
+                            or not exists (
+                                select 1
+                                from member_block b
+                                where b.unblocked_at is null
+                                  and (
+                                        (b.blocker_member_id = :viewerMemberId and b.blocked_member_id = c.member_id)
+                                        or (b.blocker_member_id = c.member_id and b.blocked_member_id = :viewerMemberId)
+                                  )
+                            )
+                      )
+                    """,
+            nativeQuery = true
+    )
+    long countVisibleByCommunityPostIdAndViewerMemberId(
+            @Param("communityPostId") Long communityPostId,
+            @Param("viewerMemberId") Long viewerMemberId
+    );
+
     // 관리자 댓글 검색
     @Query("""
             select c

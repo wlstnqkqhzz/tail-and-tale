@@ -12,6 +12,7 @@ import com.tailandtale.domain.dog.repository.DogRepository;
 import com.tailandtale.domain.member.entity.Member;
 import com.tailandtale.domain.member.entity.MemberRole;
 import com.tailandtale.domain.member.repository.MemberRepository;
+import com.tailandtale.domain.member.service.MemberBlockService;
 import com.tailandtale.domain.walk.entity.WalkReview;
 import com.tailandtale.domain.walk.repository.WalkReviewRepository;
 import com.tailandtale.global.exception.CommunityErrorCode;
@@ -38,6 +39,7 @@ public class CommunityPostService {
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
     private final WalkReviewRepository walkReviewRepository;
+    private final MemberBlockService memberBlockService;
 
     // 게시글 생성
     @Transactional
@@ -64,6 +66,7 @@ public class CommunityPostService {
 
     // 게시글 목록 조회
     public CommunityPostDto.PageResponse getPosts(
+            Long memberId,
             CommunityPostCategory category,
             String keyword,
             String sort,
@@ -71,6 +74,7 @@ public class CommunityPostService {
     ) {
         String normalizedKeyword = normalizeKeyword(keyword);
         Page<CommunityPost> postPage = communityPostRepository.search(
+                memberId,
                 category == null ? null : category.name(),
                 normalizedKeyword,
                 normalizeSort(sort),
@@ -79,7 +83,10 @@ public class CommunityPostService {
 
         return CommunityPostDto.PageResponse.builder()
                 .posts(postPage.getContent().stream()
-                        .map(CommunityPostDto.ListResponse::from)
+                        .map(post -> CommunityPostDto.ListResponse.from(
+                                post,
+                                getVisibleCommentCount(post.getId(), memberId)
+                        ))
                         .toList())
                 .page(postPage.getNumber())
                 .size(postPage.getSize())
@@ -101,11 +108,18 @@ public class CommunityPostService {
     @Transactional
     public CommunityPostDto.Response getPost(Long memberId, Long postId) {
         CommunityPost post = findPost(postId);
+        validateVisiblePost(post, memberId);
+
         boolean liked = postLikeRepository.existsByCommunityPostIdAndMemberId(postId, memberId);
 
         post.increaseViewCount();
 
-        return CommunityPostDto.Response.from(post, memberId, liked);
+        return CommunityPostDto.Response.from(
+                post,
+                memberId,
+                liked,
+                getVisibleCommentCount(post.getId(), memberId)
+        );
     }
 
     // 게시글 수정
@@ -130,7 +144,12 @@ public class CommunityPostService {
 
         boolean liked = postLikeRepository.existsByCommunityPostIdAndMemberId(postId, memberId);
 
-        return CommunityPostDto.Response.from(post, memberId, liked);
+        return CommunityPostDto.Response.from(
+                post,
+                memberId,
+                liked,
+                getVisibleCommentCount(post.getId(), memberId)
+        );
     }
 
     // 게시글 삭제
@@ -150,6 +169,7 @@ public class CommunityPostService {
     public CommunityPostDto.Response toggleLike(Long memberId, Long postId) {
         Member member = findMember(memberId);
         CommunityPost post = findPost(postId);
+        validateVisiblePost(post, memberId);
 
         postLikeRepository.findByCommunityPostIdAndMemberId(postId, memberId)
                 .ifPresentOrElse(
@@ -165,7 +185,12 @@ public class CommunityPostService {
 
         boolean liked = postLikeRepository.existsByCommunityPostIdAndMemberId(postId, memberId);
 
-        return CommunityPostDto.Response.from(post, memberId, liked);
+        return CommunityPostDto.Response.from(
+                post,
+                memberId,
+                liked,
+                getVisibleCommentCount(post.getId(), memberId)
+        );
     }
 
     // 회원 조회
@@ -221,11 +246,29 @@ public class CommunityPostService {
         }
     }
 
+    // 차단 관계 게시글 노출 여부 검증
+    private void validateVisiblePost(CommunityPost post, Long memberId) {
+        if (post.isWriter(memberId)) {
+            return;
+        }
+
+        if (memberBlockService.isBlockedBetween(memberId, post.getMember().getId())) {
+            throw new CustomException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND);
+        }
+    }
+
     // 공지 작성 권한 검증
     private void validateNoticePermission(Member member, CommunityPostCategory category) {
         if (category == CommunityPostCategory.NOTICE && member.getRole() != MemberRole.ADMIN) {
             throw new CustomException(CommunityErrorCode.COMMUNITY_NOTICE_ACCESS_DENIED);
         }
+    }
+
+    // 차단 관계를 제외한 댓글 수 조회
+    private int getVisibleCommentCount(Long postId, Long memberId) {
+        return Math.toIntExact(
+                communityCommentRepository.countVisibleByCommunityPostIdAndViewerMemberId(postId, memberId)
+        );
     }
 
     // 검색어 정리

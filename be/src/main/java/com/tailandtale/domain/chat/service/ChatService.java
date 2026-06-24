@@ -97,7 +97,8 @@ public class ChatService {
                 .stream()
                 .map(chatRoomMember -> ChatDto.RoomResponse.from(
                         chatRoomMember,
-                        getLastMessage(chatRoomMember.getChatRoom().getId())
+                        getLastMessage(chatRoomMember.getChatRoom().getId()),
+                        hasBlockedChatMember(chatRoomMember.getChatRoom().getId(), memberId)
                 ))
                 .toList();
     }
@@ -114,7 +115,8 @@ public class ChatService {
 
         return ChatDto.RoomResponse.from(
                 chatRoomMember,
-                getLastMessage(chatRoom.getId())
+                getLastMessage(chatRoom.getId()),
+                hasBlockedChatMember(chatRoom.getId(), memberId)
         );
     }
 
@@ -137,6 +139,7 @@ public class ChatService {
 
         return ChatDto.MessageListResponse.builder()
                 .lastReadMessageId(chatRoomMember.getLastReadMessageId())
+                .isInteractionBlocked(hasBlockedChatMember(chatRoomId, memberId))
                 .messages(orderedMessages.stream()
                         .map(ChatDto.MessageResponse::from)
                         .toList())
@@ -298,7 +301,6 @@ public class ChatService {
         }
     }
 
-    // 채팅 메시지 알림 생성
     // 차단 관계 채팅 전송 검증
     private void validateNotBlockedChatMember(Long chatRoomId, Long senderId) {
         chatRoomMemberRepository.findAllByChatRoomIdAndStatus(
@@ -311,6 +313,18 @@ public class ChatService {
                 .filter(memberId -> memberBlockService.isBlockedBetween(senderId, memberId))
                 .findFirst()
                 .ifPresent(memberId -> memberBlockService.validateNotBlockedBetween(senderId, memberId));
+    }
+
+    // 차단 관계 채팅 참여자 여부 확인
+    private boolean hasBlockedChatMember(Long chatRoomId, Long memberId) {
+        return chatRoomMemberRepository.findAllByChatRoomIdAndStatus(
+                        chatRoomId,
+                        ChatRoomMemberStatus.ACTIVE
+                )
+                .stream()
+                .map(chatRoomMember -> chatRoomMember.getMember().getId())
+                .filter(chatMemberId -> !chatMemberId.equals(memberId))
+                .anyMatch(chatMemberId -> memberBlockService.isBlockedBetween(memberId, chatMemberId));
     }
 
     // 채팅 메시지 알림 생성

@@ -26,6 +26,7 @@ export default function ChatRoomPage() {
     const [messages, setMessages] = useState([]);
     const [content, setContent] = useState("");
     const [unreadStartMessageId, setUnreadStartMessageId] = useState(null);
+    const [isInteractionBlocked, setIsInteractionBlocked] = useState(null);
 
     // 요청 및 연결 상태
     const [isLoading, setIsLoading] = useState(true);
@@ -44,12 +45,19 @@ export default function ChatRoomPage() {
             });
 
             const nextMessages = response.data.messages;
+            const nextInteractionBlocked = Boolean(response.data.isInteractionBlocked);
             const firstUnreadMessage = findFirstUnreadMessage(
                 nextMessages,
                 response.data.lastReadMessageId
             );
 
             setMessages(nextMessages);
+            setIsInteractionBlocked(nextInteractionBlocked);
+            setConnectionMessage(
+                nextInteractionBlocked
+                    ? "현재 이 채팅방에서 메시지를 보낼 수 없습니다."
+                    : "연결 준비 중"
+            );
             setUnreadStartMessageId(firstUnreadMessage?.chatMessageId || null);
 
             const lastMessage = nextMessages.at(-1);
@@ -91,7 +99,7 @@ export default function ChatRoomPage() {
     useEffect(() => {
         const accessToken = getAccessToken();
 
-        if (!accessToken) {
+        if (!accessToken || isInteractionBlocked !== false) {
             return;
         }
 
@@ -121,7 +129,7 @@ export default function ChatRoomPage() {
             window.clearTimeout(timerId);
             stompClientRef.current?.disconnect();
         };
-    }, [chatRoomId]);
+    }, [chatRoomId, isInteractionBlocked]);
 
     // 메시지 위치 스크롤
     useEffect(() => {
@@ -156,6 +164,11 @@ export default function ChatRoomPage() {
             return;
         }
 
+        if (isInteractionBlocked) {
+            setConnectionMessage("현재 이 채팅방에서 메시지를 보낼 수 없습니다.");
+            return;
+        }
+
         try {
             stompClientRef.current?.send(content.trim());
             setContent("");
@@ -185,7 +198,11 @@ export default function ChatRoomPage() {
                             </button>
                             <h1 className="text-3xl font-bold text-gray-950">{walkTitle}</h1>
                             <p className="mt-2 text-sm text-gray-500">
-                                {isConnected ? "실시간 메시지를 주고받을 수 있습니다." : connectionMessage}
+                                {isInteractionBlocked
+                                    ? "현재 이 채팅방에서 메시지를 보낼 수 없습니다."
+                                    : isConnected
+                                        ? "실시간 메시지를 주고받을 수 있습니다."
+                                        : connectionMessage}
                             </p>
                         </div>
 
@@ -246,13 +263,19 @@ export default function ChatRoomPage() {
                             onChange={(event) => setContent(event.target.value)}
                             maxLength={1000}
                             className="h-12 border border-gray-200 px-4 text-sm outline-none transition focus:border-black"
-                            placeholder={isConnected ? "메시지를 입력하세요" : "채팅 서버 연결 중입니다"}
-                            disabled={!isConnected}
+                            placeholder={
+                                isInteractionBlocked
+                                    ? "현재 이 채팅방에서 메시지를 보낼 수 없습니다."
+                                    : isConnected
+                                        ? "메시지를 입력하세요"
+                                        : "채팅 서버 연결 중입니다"
+                            }
+                            disabled={!isConnected || isInteractionBlocked}
                         />
 
                         <button
                             type="submit"
-                            disabled={!isConnected || !content.trim()}
+                            disabled={!isConnected || isInteractionBlocked || !content.trim()}
                             className="h-12 bg-black px-8 text-sm font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:bg-gray-300"
                         >
                             전송
