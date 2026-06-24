@@ -46,8 +46,14 @@ export default function ReportModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-6">
-            <div className="w-full max-w-lg border border-gray-200 bg-white p-7 shadow-2xl">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-6"
+            onClick={(event) => event.stopPropagation()}
+        >
+            <div
+                className="w-full max-w-lg border border-gray-200 bg-white p-7 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+            >
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <p className="text-xs font-bold tracking-[0.35em] text-emerald-700">REPORT</p>

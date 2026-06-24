@@ -151,9 +151,29 @@ export default function MyPage() {
         try {
             const response = await updateNotificationSetting(notificationType, { isEnabled });
 
-            setNotificationSettings((prevSettings) => prevSettings.map((setting) =>
-                setting.notificationType === notificationType ? response.data : setting
-            ));
+            setNotificationSettings((prevSettings) => {
+                if (notificationType === "ALL") {
+                    return prevSettings.map((setting) => ({
+                        ...setting,
+                        isEnabled,
+                    }));
+                }
+
+                return prevSettings.map((setting) => {
+                    if (setting.notificationType === notificationType) {
+                        return response.data;
+                    }
+
+                    if (isEnabled && setting.notificationType === "ALL") {
+                        return {
+                            ...setting,
+                            isEnabled: true,
+                        };
+                    }
+
+                    return setting;
+                });
+            });
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "알림 설정 변경에 실패했습니다.");

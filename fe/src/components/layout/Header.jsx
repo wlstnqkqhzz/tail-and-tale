@@ -259,24 +259,10 @@ export default function Header({ onLoginClick }) {
                                         </button>
 
                                         <button
-                                            onClick={() => movePage("/walks")}
-                                            className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
-                                        >
-                                            산책 일정
-                                        </button>
-
-                                        <button
                                             onClick={() => movePage("/chat/rooms")}
                                             className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
                                         >
                                             채팅
-                                        </button>
-
-                                        <button
-                                            onClick={() => movePage("/care")}
-                                            className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50"
-                                        >
-                                            케어 기록
                                         </button>
 
                                         {member?.role === "ADMIN" && (

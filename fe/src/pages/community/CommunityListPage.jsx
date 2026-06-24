@@ -287,6 +287,7 @@ export default function CommunityListPage() {
                                                 className={`truncate px-4 py-4 ${
                                                     isNotice ? "font-semibold text-gray-700" : "text-gray-600"
                                                 }`}
+                                                onClick={(event) => event.stopPropagation()}
                                             >
                                                 <UserActionTrigger memberId={post.memberId} nickname={post.nickname} />
                                             </td>
