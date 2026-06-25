@@ -233,7 +233,7 @@ export default function CommunityListPage() {
                             조회된 커뮤니티 게시글이 없습니다.
                         </div>
                     ) : (
-                        <div className="mt-6 overflow-hidden border-y border-gray-200">
+                        <div className="mt-6 overflow-visible border-y border-gray-200">
                             <table className="w-full table-fixed text-sm">
                                 <thead className="border-b border-gray-200 bg-gray-50 text-gray-500">
                                 <tr>
@@ -281,6 +281,9 @@ export default function CommunityListPage() {
                                                             [{post.commentCount}]
                                                         </span>
                                                     )}
+                                                    {post.hasImage && (
+                                                        <ImageThumbnailPreview post={post} />
+                                                    )}
                                                 </div>
                                             </td>
                                             <td
@@ -327,4 +330,30 @@ export default function CommunityListPage() {
 
 function formatDateOnly(value) {
     return value ? value.slice(0, 10) : "-";
+}
+
+// 이미지 게시글 썸네일 미리보기
+function ImageThumbnailPreview({ post }) {
+    return (
+        <span className="group relative inline-flex shrink-0 items-center">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center border border-gray-200 px-1 text-[10px] font-bold text-gray-500">
+                IMG
+            </span>
+
+            {post.thumbnailUrl && (
+                <span className="pointer-events-none absolute left-0 top-7 z-20 hidden w-40 border border-gray-200 bg-white p-1 shadow-xl group-hover:block">
+                    <img
+                        src={post.thumbnailUrl}
+                        alt={`${post.title} 썸네일`}
+                        className="aspect-square w-full object-cover"
+                    />
+                    {post.imageCount > 1 && (
+                        <span className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 text-xs font-bold text-white">
+                            {post.imageCount}장
+                        </span>
+                    )}
+                </span>
+            )}
+        </span>
+    );
 }

@@ -106,6 +106,9 @@ Tail-And-Tale/
 ### 커뮤니티
 
 - 게시글 작성, 조회, 수정, 삭제
+- 게시글 이미지 첨부, 미리보기, 삭제
+- 이미지 게시글 목록 썸네일 hover 미리보기
+- 게시글 상세 이미지 갤러리 표시
 - 카테고리별 게시글 분류
 - 댓글 / 대댓글
 - 좋아요 기능
@@ -345,6 +348,7 @@ http://localhost:5173
 | Method | URL | Description |
 | --- | --- | --- |
 | POST | `/api/community/posts` | 게시글 작성 |
+| POST | `/api/community/posts/images` | 게시글 이미지 업로드 |
 | GET | `/api/community/posts` | 게시글 목록 조회 |
 | GET | `/api/community/posts/{communityPostId}` | 게시글 상세 조회 |
 | PATCH | `/api/community/posts/{communityPostId}` | 게시글 수정 |
@@ -434,6 +438,7 @@ http://localhost:5173
 | ChatRoom | 산책별 채팅방 관리 |
 | ChatMessage | 채팅 메시지 및 시스템 메시지 관리 |
 | CommunityPost | 커뮤니티 게시글, 카테고리, 조회수, 좋아요, 댓글 수 관리 |
+| CommunityPostImage | 커뮤니티 게시글 첨부 이미지, 대표 썸네일, 표시 순서 관리 |
 | CommunityComment | 댓글, 대댓글, 삭제 상태 관리 |
 | WalkRecord | 산책 기록, 거리, 시간, 산책 후 컨디션 관리 |
 | EmotionDiary | 감정 일기 및 산책 기록 연결 관리 |

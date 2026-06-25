@@ -2,6 +2,7 @@ package com.tailandtale.domain.community.controller;
 
 import com.tailandtale.domain.community.dto.CommunityPostDto;
 import com.tailandtale.domain.community.entity.CommunityPostCategory;
+import com.tailandtale.domain.community.service.CommunityPostImageStorageService;
 import com.tailandtale.domain.community.service.CommunityPostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 // 커뮤니티 게시글 CRUD API 컨트롤러
 
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/community/posts")
 public class CommunityPostController {
     private final CommunityPostService communityPostService;
+    private final CommunityPostImageStorageService communityPostImageStorageService;
 
     // 게시글 생성
     @PostMapping
@@ -26,6 +30,22 @@ public class CommunityPostController {
                 communityPostService.createPost(
                         getLoginMemberId(),
                         request
+                )
+        );
+    }
+
+    // 게시글 이미지 업로드
+    @PostMapping("/images")
+    public ResponseEntity<CommunityPostDto.ImageUploadResponse> uploadPostImage(@RequestParam("image") MultipartFile image) {
+        CommunityPostImageStorageService.StoredImage storedImage = communityPostImageStorageService.store(image);
+        String imageUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(storedImage.imageUrl())
+                .toUriString();
+
+        return ResponseEntity.ok(
+                CommunityPostDto.ImageUploadResponse.from(
+                        storedImage,
+                        imageUrl
                 )
         );
     }

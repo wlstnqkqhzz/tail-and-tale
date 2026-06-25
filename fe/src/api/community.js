@@ -5,6 +5,15 @@ export const createCommunityPost = (data) => {
     return api.post("/api/community/posts", data);
 };
 
+// 커뮤니티 게시글 이미지 업로드
+export const uploadCommunityPostImage = (formData) => {
+    return api.post("/api/community/posts/images", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+    });
+};
+
 // 커뮤니티 게시글 목록 조회
 export const getCommunityPosts = (params) => {
     return api.get("/api/community/posts", { params });

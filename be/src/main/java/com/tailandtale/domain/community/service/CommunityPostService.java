@@ -2,9 +2,11 @@ package com.tailandtale.domain.community.service;
 
 import com.tailandtale.domain.community.dto.CommunityPostDto;
 import com.tailandtale.domain.community.entity.CommunityPost;
+import com.tailandtale.domain.community.entity.CommunityPostImage;
 import com.tailandtale.domain.community.entity.CommunityPostCategory;
 import com.tailandtale.domain.community.entity.PostLike;
 import com.tailandtale.domain.community.repository.CommunityCommentRepository;
+import com.tailandtale.domain.community.repository.CommunityPostImageRepository;
 import com.tailandtale.domain.community.repository.CommunityPostRepository;
 import com.tailandtale.domain.community.repository.PostLikeRepository;
 import com.tailandtale.domain.dog.entity.Dog;
@@ -24,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -33,8 +36,11 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommunityPostService {
+    private static final int MAX_POST_IMAGE_COUNT = 5;
+
     private final CommunityPostRepository communityPostRepository;
     private final CommunityCommentRepository communityCommentRepository;
+    private final CommunityPostImageRepository communityPostImageRepository;
     private final PostLikeRepository postLikeRepository;
     private final MemberRepository memberRepository;
     private final DogRepository dogRepository;
@@ -60,8 +66,9 @@ public class CommunityPostService {
         );
 
         CommunityPost savedPost = communityPostRepository.save(post);
+        savePostImages(savedPost, request.getImages());
 
-        return CommunityPostDto.Response.from(savedPost, memberId);
+        return toResponse(savedPost, memberId, false);
     }
 
     // 게시글 목록 조회
@@ -85,7 +92,9 @@ public class CommunityPostService {
                 .posts(postPage.getContent().stream()
                         .map(post -> CommunityPostDto.ListResponse.from(
                                 post,
-                                getVisibleCommentCount(post.getId(), memberId)
+                                getVisibleCommentCount(post.getId(), memberId),
+                                getThumbnailImage(post.getId()),
+                                communityPostImageRepository.countByCommunityPostId(post.getId())
                         ))
                         .toList())
                 .page(postPage.getNumber())
@@ -114,12 +123,7 @@ public class CommunityPostService {
 
         post.increaseViewCount();
 
-        return CommunityPostDto.Response.from(
-                post,
-                memberId,
-                liked,
-                getVisibleCommentCount(post.getId(), memberId)
-        );
+        return toResponse(post, memberId, liked);
     }
 
     // 게시글 수정
@@ -141,15 +145,11 @@ public class CommunityPostService {
                 request.getTitle().trim(),
                 request.getContent().trim()
         );
+        replacePostImages(post, request.getImages());
 
         boolean liked = postLikeRepository.existsByCommunityPostIdAndMemberId(postId, memberId);
 
-        return CommunityPostDto.Response.from(
-                post,
-                memberId,
-                liked,
-                getVisibleCommentCount(post.getId(), memberId)
-        );
+        return toResponse(post, memberId, liked);
     }
 
     // 게시글 삭제
@@ -161,6 +161,7 @@ public class CommunityPostService {
 
         postLikeRepository.deleteAllByCommunityPostId(postId);
         communityCommentRepository.deleteAllByCommunityPostId(postId);
+        communityPostImageRepository.deleteAllByCommunityPostId(postId);
         communityPostRepository.delete(post);
     }
 
@@ -185,12 +186,7 @@ public class CommunityPostService {
 
         boolean liked = postLikeRepository.existsByCommunityPostIdAndMemberId(postId, memberId);
 
-        return CommunityPostDto.Response.from(
-                post,
-                memberId,
-                liked,
-                getVisibleCommentCount(post.getId(), memberId)
-        );
+        return toResponse(post, memberId, liked);
     }
 
     // 회원 조회
@@ -268,6 +264,69 @@ public class CommunityPostService {
     private int getVisibleCommentCount(Long postId, Long memberId) {
         return Math.toIntExact(
                 communityCommentRepository.countVisibleByCommunityPostIdAndViewerMemberId(postId, memberId)
+        );
+    }
+
+    // 게시글 이미지 저장
+    private void savePostImages(CommunityPost post, List<CommunityPostDto.ImageRequest> images) {
+        List<CommunityPostDto.ImageRequest> imageRequests = normalizeImages(images);
+
+        for (int index = 0; index < imageRequests.size(); index++) {
+            CommunityPostDto.ImageRequest imageRequest = imageRequests.get(index);
+
+            communityPostImageRepository.save(CommunityPostImage.create(
+                    post,
+                    imageRequest.getImageUrl(),
+                    imageRequest.getOriginalFileName(),
+                    imageRequest.getStoredFileName(),
+                    imageRequest.getContentType(),
+                    imageRequest.getFileSize(),
+                    index,
+                    index == 0
+            ));
+        }
+    }
+
+    // 게시글 이미지 교체
+    private void replacePostImages(CommunityPost post, List<CommunityPostDto.ImageRequest> images) {
+        communityPostImageRepository.deleteAllByCommunityPostId(post.getId());
+        savePostImages(post, images);
+    }
+
+    // 게시글 이미지 요청 정리
+    private List<CommunityPostDto.ImageRequest> normalizeImages(List<CommunityPostDto.ImageRequest> images) {
+        if (images == null || images.isEmpty()) {
+            return List.of();
+        }
+
+        if (images.size() > MAX_POST_IMAGE_COUNT) {
+            throw new CustomException(CommunityErrorCode.COMMUNITY_POST_IMAGE_LIMIT_EXCEEDED);
+        }
+
+        images.forEach(image -> {
+            if (image == null || !StringUtils.hasText(image.getImageUrl())) {
+                throw new CustomException(CommunityErrorCode.COMMUNITY_POST_IMAGE_REQUIRED);
+            }
+        });
+
+        return images;
+    }
+
+    // 대표 이미지 조회
+    private CommunityPostImage getThumbnailImage(Long postId) {
+        return communityPostImageRepository.findFirstByCommunityPostIdAndIsThumbnailTrueOrderBySortOrderAscIdAsc(postId)
+                .or(() -> communityPostImageRepository.findFirstByCommunityPostIdOrderBySortOrderAscIdAsc(postId))
+                .orElse(null);
+    }
+
+    // 게시글 상세 응답 생성
+    private CommunityPostDto.Response toResponse(CommunityPost post, Long memberId, boolean liked) {
+        return CommunityPostDto.Response.from(
+                post,
+                memberId,
+                liked,
+                getVisibleCommentCount(post.getId(), memberId),
+                communityPostImageRepository.findAllByCommunityPostIdOrderBySortOrderAscIdAsc(post.getId())
         );
     }
 

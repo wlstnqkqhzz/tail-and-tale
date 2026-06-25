@@ -2,6 +2,8 @@ package com.tailandtale.domain.community.dto;
 
 import com.tailandtale.domain.community.entity.CommunityPost;
 import com.tailandtale.domain.community.entity.CommunityPostCategory;
+import com.tailandtale.domain.community.entity.CommunityPostImage;
+import com.tailandtale.domain.community.service.CommunityPostImageStorageService;
 import com.tailandtale.domain.walk.entity.WalkReview;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -40,6 +42,9 @@ public class CommunityPostDto {
         // 게시글 내용
         @NotBlank(message = "게시글 내용을 입력해주세요.")
         private String content;
+
+        // 첨부 이미지 목록
+        private List<ImageRequest> images;
     }
 
     // 게시글 수정 요청 DTO
@@ -65,6 +70,55 @@ public class CommunityPostDto {
         // 게시글 내용
         @NotBlank(message = "게시글 내용을 입력해주세요.")
         private String content;
+
+        // 첨부 이미지 목록
+        private List<ImageRequest> images;
+    }
+
+    // 게시글 이미지 요청 DTO
+    @Getter
+    @NoArgsConstructor
+    public static class ImageRequest {
+
+        // 이미지 URL
+        @NotBlank(message = "이미지 URL은 필수입니다.")
+        private String imageUrl;
+
+        // 원본 파일명
+        private String originalFileName;
+
+        // 저장 파일명
+        private String storedFileName;
+
+        // 이미지 Content-Type
+        private String contentType;
+
+        // 이미지 파일 크기
+        private Long fileSize;
+    }
+
+    // 게시글 이미지 업로드 응답 DTO
+    @Getter
+    @Builder
+    public static class ImageUploadResponse {
+        private String imageUrl;
+        private String originalFileName;
+        private String storedFileName;
+        private String contentType;
+        private Long fileSize;
+
+        public static ImageUploadResponse from(
+                CommunityPostImageStorageService.StoredImage storedImage,
+                String imageUrl
+        ) {
+            return ImageUploadResponse.builder()
+                    .imageUrl(imageUrl)
+                    .originalFileName(storedImage.originalFileName())
+                    .storedFileName(storedImage.storedFileName())
+                    .contentType(storedImage.contentType())
+                    .fileSize(storedImage.fileSize())
+                    .build();
+        }
     }
 
     // 게시글 목록 응답 DTO
@@ -81,6 +135,9 @@ public class CommunityPostDto {
         private Integer viewCount;
         private Integer likeCount;
         private Integer commentCount;
+        private Boolean hasImage;
+        private String thumbnailUrl;
+        private Long imageCount;
         private LocalDateTime createdAt;
 
         public static ListResponse from(CommunityPost post) {
@@ -88,6 +145,15 @@ public class CommunityPostDto {
         }
 
         public static ListResponse from(CommunityPost post, Integer commentCount) {
+            return from(post, commentCount, null, 0L);
+        }
+
+        public static ListResponse from(
+                CommunityPost post,
+                Integer commentCount,
+                CommunityPostImage thumbnailImage,
+                Long imageCount
+        ) {
             return ListResponse.builder()
                     .communityPostId(post.getId())
                     .memberId(post.getMember().getId())
@@ -99,6 +165,9 @@ public class CommunityPostDto {
                     .viewCount(post.getViewCount())
                     .likeCount(post.getLikeCount())
                     .commentCount(commentCount)
+                    .hasImage(imageCount != null && imageCount > 0)
+                    .thumbnailUrl(thumbnailImage == null ? null : thumbnailImage.getImageUrl())
+                    .imageCount(imageCount == null ? 0L : imageCount)
                     .createdAt(post.getCreatedAt())
                     .build();
         }
@@ -121,6 +190,7 @@ public class CommunityPostDto {
         private Integer commentCount;
         private Boolean isLiked;
         private Boolean isWriter;
+        private List<ImageResponse> images;
         private LinkedWalkReviewResponse linkedWalkReview;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -134,6 +204,16 @@ public class CommunityPostDto {
         }
 
         public static Response from(CommunityPost post, Long loginMemberId, Boolean isLiked, Integer commentCount) {
+            return from(post, loginMemberId, isLiked, commentCount, List.of());
+        }
+
+        public static Response from(
+                CommunityPost post,
+                Long loginMemberId,
+                Boolean isLiked,
+                Integer commentCount,
+                List<CommunityPostImage> images
+        ) {
             return Response.builder()
                     .communityPostId(post.getId())
                     .memberId(post.getMember().getId())
@@ -148,9 +228,33 @@ public class CommunityPostDto {
                     .commentCount(commentCount)
                     .isLiked(isLiked)
                     .isWriter(post.isWriter(loginMemberId))
+                    .images(images.stream()
+                            .map(ImageResponse::from)
+                            .toList())
                     .linkedWalkReview(LinkedWalkReviewResponse.from(post.getWalkReview()))
                     .createdAt(post.getCreatedAt())
                     .updatedAt(post.getUpdatedAt())
+                    .build();
+        }
+    }
+
+    // 게시글 이미지 응답 DTO
+    @Getter
+    @Builder
+    public static class ImageResponse {
+        private Long postImageId;
+        private String imageUrl;
+        private String originalFileName;
+        private Integer sortOrder;
+        private Boolean isThumbnail;
+
+        public static ImageResponse from(CommunityPostImage image) {
+            return ImageResponse.builder()
+                    .postImageId(image.getId())
+                    .imageUrl(image.getImageUrl())
+                    .originalFileName(image.getOriginalFileName())
+                    .sortOrder(image.getSortOrder())
+                    .isThumbnail(image.getIsThumbnail())
                     .build();
         }
     }

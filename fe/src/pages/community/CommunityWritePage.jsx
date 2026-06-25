@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CommunityImageUploader from "../../components/community/CommunityImageUploader";
 import Header from "../../components/layout/Header";
 import { createCommunityPost } from "../../api/community";
 import { getMyWrittenWalkReviews } from "../../api/walk";
@@ -21,6 +22,7 @@ const initialForm = {
     walkReviewId: "",
     title: "",
     content: "",
+    images: [],
 };
 
 export default function CommunityWritePage() {
@@ -124,6 +126,7 @@ export default function CommunityWritePage() {
                 category: form.category,
                 title: form.title.trim(),
                 content: form.content.trim(),
+                images: form.images,
             });
 
             alert("게시글이 등록되었습니다.");
@@ -203,6 +206,15 @@ export default function CommunityWritePage() {
                                     placeholder="내용을 입력해주세요."
                                 />
                             </Field>
+
+                            <CommunityImageUploader
+                                images={form.images}
+                                onChange={(images) => setForm((prevForm) => ({
+                                    ...prevForm,
+                                    images,
+                                }))}
+                                disabled={isSubmitting}
+                            />
                         </div>
 
                         <div className="mt-8 flex justify-end gap-3">

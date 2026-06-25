@@ -324,6 +324,10 @@ export default function CommunityDetailPage() {
                                 <LinkedWalkReviewCard review={post.linkedWalkReview} />
                             )}
 
+                            {post.images?.length > 0 && (
+                                <PostImageGallery images={post.images} title={post.title} />
+                            )}
+
                             {post.content}
                         </article>
 
@@ -486,6 +490,22 @@ function LinkedWalkReviewCard({ review }) {
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-700">
                 {review.content || "후기 내용이 없습니다."}
             </p>
+        </div>
+    );
+}
+
+// 게시글 이미지 갤러리
+function PostImageGallery({ images, title }) {
+    return (
+        <div className="mb-8 grid gap-3 sm:grid-cols-2">
+            {images.map((image, index) => (
+                <img
+                    key={image.postImageId || `${image.imageUrl}-${index}`}
+                    src={image.imageUrl}
+                    alt={image.originalFileName || `${title} 이미지 ${index + 1}`}
+                    className="max-h-[520px] w-full border border-gray-200 object-cover"
+                />
+            ))}
         </div>
     );
 }

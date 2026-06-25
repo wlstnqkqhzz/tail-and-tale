@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import CommunityImageUploader from "../../components/community/CommunityImageUploader";
 import Header from "../../components/layout/Header";
 import { getCommunityPost, updateCommunityPost } from "../../api/community";
 import { getMyWrittenWalkReviews } from "../../api/walk";
@@ -22,6 +23,7 @@ const initialForm = {
     category: "DAILY",
     title: "",
     content: "",
+    images: [],
 };
 
 export default function CommunityEditPage() {
@@ -53,6 +55,10 @@ export default function CommunityEditPage() {
                 category: post.category || "DAILY",
                 title: post.title || "",
                 content: post.content || "",
+                images: (post.images || []).map((image) => ({
+                    imageUrl: image.imageUrl,
+                    originalFileName: image.originalFileName,
+                })),
             });
         } catch (error) {
             console.error(error);
@@ -156,6 +162,7 @@ export default function CommunityEditPage() {
                 category: form.category,
                 title: form.title.trim(),
                 content: form.content.trim(),
+                images: form.images,
             });
 
             alert("게시글이 수정되었습니다.");
@@ -240,6 +247,15 @@ export default function CommunityEditPage() {
                                             placeholder="내용을 입력해주세요."
                                         />
                                     </Field>
+
+                                    <CommunityImageUploader
+                                        images={form.images}
+                                        onChange={(images) => setForm((prevForm) => ({
+                                            ...prevForm,
+                                            images,
+                                        }))}
+                                        disabled={isSubmitting}
+                                    />
                                 </div>
 
                                 <div className="mt-8 flex justify-end gap-3">
