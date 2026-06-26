@@ -40,6 +40,7 @@ const changeableStatusLabels = {
 
 const categoryLabels = {
     DAILY: "일상",
+    FREE_TALK: "잡담",
     WALK_REVIEW: "산책 후기",
     CARE_INFO: "케어 정보",
     QUESTION: "질문",

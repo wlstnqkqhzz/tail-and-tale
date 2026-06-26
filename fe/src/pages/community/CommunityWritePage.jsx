@@ -11,6 +11,7 @@ import { useAuth } from "../../hooks/useAuth";
 
 const categories = [
     { value: "DAILY", label: "일상" },
+    { value: "FREE_TALK", label: "잡담" },
     { value: "WALK_REVIEW", label: "산책 후기" },
     { value: "CARE_INFO", label: "케어 정보" },
     { value: "QUESTION", label: "질문" },

@@ -10,6 +10,7 @@ import { getAccessToken } from "../../utils/token";
 const categories = [
     { value: "", label: "전체" },
     { value: "DAILY", label: "일상" },
+    { value: "FREE_TALK", label: "잡담" },
     { value: "WALK_REVIEW", label: "산책 후기" },
     { value: "CARE_INFO", label: "케어 정보" },
     { value: "QUESTION", label: "질문" },
@@ -25,6 +26,7 @@ const sortOptions = [
 const categoryLabels = {
     WALK_REVIEW: "산책 후기",
     DAILY: "일상",
+    FREE_TALK: "잡담",
     CARE_INFO: "케어 정보",
     QUESTION: "질문",
     NOTICE: "공지",

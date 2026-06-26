@@ -36,6 +36,7 @@ export function getCommunityCategoryLabel(category) {
     if (category === "NOTICE") return "공지";
     if (category === "WALK_REVIEW") return "산책 후기";
     if (category === "DAILY") return "일상";
+    if (category === "FREE_TALK") return "잡담";
     if (category === "INFO") return "정보";
     if (category === "QUESTION") return "질문";
     return category || "게시글";
