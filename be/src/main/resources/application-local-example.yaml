@@ -1,0 +1,60 @@
+app:
+  # ==========================================================================
+  # 1. DB
+  # ==========================================================================
+  datasource:
+    url: jdbc:mysql://localhost:3306/tail_tale?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: your-db-username
+    password: your-db-password
+
+  # ==========================================================================
+  # 2. JPA
+  # ==========================================================================
+  jpa:
+    ddl-auto: validate
+    show-sql: true
+    format-sql: true
+
+  # ==========================================================================
+  # 3. OAuth2
+  # ==========================================================================
+  oauth:
+    google:
+      client-id: your-google-client-id
+      client-secret: your-google-client-secret
+    kakao:
+      client-id: your-kakao-client-id
+      client-secret: your-kakao-client-secret
+    naver:
+      client-id: your-naver-client-id
+      client-secret: your-naver-client-secret
+
+  # ==========================================================================
+  # 4. JWT
+  # ==========================================================================
+  jwt:
+    access-secret: replace-with-access-secret-at-least-32-characters
+    refresh-secret: replace-with-refresh-secret-at-least-32-characters
+    access-token-expiration: 3600000
+    refresh-token-expiration: 1209600000
+
+  # ==========================================================================
+  # 5. App
+  # ==========================================================================
+  frontend-url: http://localhost:5173
+
+  # ==========================================================================
+  # 6. 동물등록번호 인증 API
+  # ==========================================================================
+  animal-registration:
+    enabled: false
+    service-key: ""
+
+  # ==========================================================================
+  # 7. Gemini API
+  # ==========================================================================
+  gemini:
+    enabled: false
+    api-url: https://generativelanguage.googleapis.com/v1beta
+    api-key: ""
+    model: gemini-2.5-flash
