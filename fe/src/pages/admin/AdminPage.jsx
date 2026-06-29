@@ -418,6 +418,7 @@ export default function AdminPage() {
                     {activeTab === "reports" && (
                         <ReportAdminSection
                             reports={reports}
+                            currentMemberId={member.memberId}
                             keyword={reportKeyword}
                             status={reportStatus}
                             targetType={reportTargetType}
@@ -635,6 +636,7 @@ function CommentAdminSection({ comments, keyword, onKeywordChange, onSearch, onD
 
 function ReportAdminSection({
                                 reports,
+                                currentMemberId,
                                 keyword,
                                 status,
                                 targetType,
@@ -687,7 +689,10 @@ function ReportAdminSection({
             </AdminFilter>
 
             <div className="mt-8 grid gap-3">
-                {reports.map((report) => (
+                {reports.map((report) => {
+                    const isSelfReport = report.reportedMemberId === currentMemberId;
+
+                    return (
                     <AdminListRow key={report.reportId}>
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -724,10 +729,17 @@ function ReportAdminSection({
                         </div>
 
                         <div className="flex min-w-36 flex-col gap-2">
+                            {isSelfReport && (
+                                <p className="border border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-700">
+                                    본인 대상 신고
+                                </p>
+                            )}
+
                             <button
                                 type="button"
                                 onClick={() => onStatusUpdate(report.reportId, "REVIEWED", "REVIEW_ONLY")}
-                                className="h-9 border border-sky-100 bg-sky-50 px-3 text-sm font-bold text-sky-700 hover:bg-sky-100"
+                                disabled={isSelfReport}
+                                className="h-9 border border-sky-100 bg-sky-50 px-3 text-sm font-bold text-sky-700 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 검토 중
                             </button>
@@ -735,7 +747,8 @@ function ReportAdminSection({
                             <button
                                 type="button"
                                 onClick={() => onStatusUpdate(report.reportId, "REJECTED", "REJECT_REPORT")}
-                                className="h-9 border border-gray-200 bg-white px-3 text-sm font-bold text-gray-600 hover:bg-gray-50"
+                                disabled={isSelfReport}
+                                className="h-9 border border-gray-200 bg-white px-3 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 신고 반려
                             </button>
@@ -744,7 +757,8 @@ function ReportAdminSection({
                                 <button
                                     type="button"
                                     onClick={() => onStatusUpdate(report.reportId, "RESOLVED", "DELETE_TARGET")}
-                                    className="h-9 border border-rose-100 bg-rose-50 px-3 text-sm font-bold text-rose-600 hover:bg-rose-100"
+                                    disabled={isSelfReport}
+                                    className="h-9 border border-rose-100 bg-rose-50 px-3 text-sm font-bold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     대상 삭제
                                 </button>
@@ -754,14 +768,16 @@ function ReportAdminSection({
                                 <button
                                     type="button"
                                     onClick={() => onStatusUpdate(report.reportId, "RESOLVED", "BAN_REPORTED_MEMBER")}
-                                    className="h-9 border border-red-200 bg-white px-3 text-sm font-bold text-red-600 hover:bg-red-50"
+                                    disabled={isSelfReport}
+                                    className="h-9 border border-red-200 bg-white px-3 text-sm font-bold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     회원 정지
                                 </button>
                             )}
                         </div>
                     </AdminListRow>
-                ))}
+                    );
+                })}
 
                 {reports.length === 0 && <EmptyBox text="접수된 신고가 없습니다." />}
             </div>

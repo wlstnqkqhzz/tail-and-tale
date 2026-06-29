@@ -105,6 +105,8 @@ public class ReportService {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorCode.REPORT_NOT_FOUND));
 
+        validateSelfReportProcess(admin, report);
+
         ReportProcessAction action = request.getAction() == null
                 ? ReportProcessAction.REVIEW_ONLY
                 : request.getAction();
@@ -119,6 +121,18 @@ public class ReportService {
         applyTrustScoreForProcessedReport(report);
 
         return ReportDto.Response.from(report);
+    }
+
+    // 신고 대상 관리자의 본인 신고 처리 차단
+    private void validateSelfReportProcess(
+            Member admin,
+            Report report
+    ) {
+        Member reportedMember = report.getReportedMember();
+
+        if (reportedMember != null && admin.getId().equals(reportedMember.getId())) {
+            throw new CustomException(ReportErrorCode.REPORT_SELF_PROCESS_DENIED);
+        }
     }
 
     private void applyTrustScoreForProcessedReport(Report report) {
