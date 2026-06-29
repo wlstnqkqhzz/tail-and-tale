@@ -6,6 +6,7 @@ import Header from "../../components/layout/Header";
 import { UserActionTrigger } from "../../components/member/UserMiniProfileModal";
 import { getCommunityPosts } from "../../api/community";
 import { getAccessToken } from "../../utils/token";
+import { getReadCommunityPostIds } from "../../utils/communityReadHistory";
 
 const categories = [
     { value: "", label: "전체" },
@@ -39,6 +40,7 @@ export default function CommunityListPage() {
     const [posts, setPosts] = useState([]);
     const [pageInfo, setPageInfo] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [readPostIds] = useState(() => getReadCommunityPostIds());
 
     const [category, setCategory] = useState(searchParams.get("category") || "");
     const [sort, setSort] = useState(searchParams.get("sort") || "latest");
@@ -251,12 +253,13 @@ export default function CommunityListPage() {
                                 <tbody>
                                 {sortedPosts.map((post) => {
                                     const isNotice = post.category === "NOTICE";
+                                    const isRead = readPostIds.has(String(post.communityPostId));
 
                                     return (
                                         <tr
                                             key={post.communityPostId}
                                             onClick={() => navigate(`/community/${post.communityPostId}`)}
-                                            className={`cursor-pointer border-b transition ${
+                                            className={`group/post-row cursor-pointer border-b transition ${
                                                 isNotice
                                                     ? "border-gray-200 bg-gray-100 hover:bg-gray-200/80"
                                                     : "border-gray-100 hover:bg-gray-50"
@@ -264,7 +267,11 @@ export default function CommunityListPage() {
                                         >
                                             <td
                                                 className={`px-4 py-4 ${
-                                                    isNotice ? "font-bold text-gray-950" : "text-gray-500"
+                                                    isRead
+                                                        ? "text-gray-400"
+                                                        : isNotice
+                                                            ? "font-bold text-gray-950"
+                                                            : "text-gray-500"
                                                 }`}
                                             >
                                                 {categoryLabels[post.category] || post.category}
@@ -273,7 +280,7 @@ export default function CommunityListPage() {
                                                 <div className="flex min-w-0 items-center gap-2">
                                                     <span
                                                         className={`truncate font-bold ${
-                                                            isNotice ? "text-gray-950" : "text-gray-950"
+                                                            isRead ? "text-gray-400" : "text-gray-950"
                                                         }`}
                                                     >
                                                         {post.title}
@@ -290,7 +297,11 @@ export default function CommunityListPage() {
                                             </td>
                                             <td
                                                 className={`truncate px-4 py-4 ${
-                                                    isNotice ? "font-semibold text-gray-700" : "text-gray-600"
+                                                    isRead
+                                                        ? "opacity-45"
+                                                        : isNotice
+                                                            ? "font-semibold text-gray-700"
+                                                            : "text-gray-600"
                                                 }`}
                                                 onClick={(event) => event.stopPropagation()}
                                             >
@@ -298,21 +309,33 @@ export default function CommunityListPage() {
                                             </td>
                                             <td
                                                 className={`px-4 py-4 text-center ${
-                                                    isNotice ? "font-semibold text-gray-500" : "text-gray-500"
+                                                    isRead
+                                                        ? "text-gray-400"
+                                                        : isNotice
+                                                            ? "font-semibold text-gray-500"
+                                                            : "text-gray-500"
                                                 }`}
                                             >
                                                 {formatDateOnly(post.createdAt)}
                                             </td>
                                             <td
                                                 className={`px-4 py-4 text-center ${
-                                                    isNotice ? "font-semibold text-gray-500" : "text-gray-500"
+                                                    isRead
+                                                        ? "text-gray-400"
+                                                        : isNotice
+                                                            ? "font-semibold text-gray-500"
+                                                            : "text-gray-500"
                                                 }`}
                                             >
                                                 {post.viewCount}
                                             </td>
                                             <td
                                                 className={`px-4 py-4 text-center ${
-                                                    isNotice ? "font-semibold text-gray-500" : "text-gray-500"
+                                                    isRead
+                                                        ? "text-gray-400"
+                                                        : isNotice
+                                                            ? "font-semibold text-gray-500"
+                                                            : "text-gray-500"
                                                 }`}
                                             >
                                                 {post.likeCount}
@@ -337,13 +360,13 @@ function formatDateOnly(value) {
 // 이미지 게시글 썸네일 미리보기
 function ImageThumbnailPreview({ post }) {
     return (
-        <span className="group relative inline-flex shrink-0 items-center">
+        <span className="relative inline-flex shrink-0 items-center">
             <span className="inline-flex h-5 min-w-5 items-center justify-center border border-gray-200 px-1 text-[10px] font-bold text-gray-500">
                 IMG
             </span>
 
             {post.thumbnailUrl && (
-                <span className="pointer-events-none absolute left-0 top-7 z-20 hidden w-40 border border-gray-200 bg-white p-1 shadow-xl group-hover:block">
+                <span className="pointer-events-none absolute left-0 top-7 z-20 hidden w-40 border border-gray-200 bg-white p-1 shadow-xl group-hover/post-row:block">
                     <img
                         src={post.thumbnailUrl}
                         alt={`${post.title} 썸네일`}

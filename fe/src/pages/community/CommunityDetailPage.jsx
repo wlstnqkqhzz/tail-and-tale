@@ -16,6 +16,7 @@ import {
 } from "../../api/community";
 import { createReport } from "../../api/report";
 import { getAccessToken } from "../../utils/token";
+import { markCommunityPostAsRead } from "../../utils/communityReadHistory";
 
 const categoryLabels = {
     WALK_REVIEW: "산책 후기",
@@ -49,6 +50,7 @@ export default function CommunityDetailPage() {
     const fetchPost = useCallback(async () => {
         const response = await getCommunityPost(communityPostId);
         setPost(response.data);
+        markCommunityPostAsRead(communityPostId);
     }, [communityPostId]);
 
     // 댓글 목록 조회
