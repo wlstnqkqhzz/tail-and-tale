@@ -4,11 +4,11 @@ import com.tailandtale.domain.walk.dto.WalkScheduleDto;
 import com.tailandtale.domain.walk.service.WalkScheduleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 // 산책 일정 CRUD API 컨트롤러
 
@@ -87,13 +87,18 @@ public class WalkScheduleController {
 
     // 산책 일정 목록 조회
     @GetMapping
-    public ResponseEntity<List<WalkScheduleDto.DetailResponse>> getSchedules(
-            @ModelAttribute WalkScheduleDto.SearchCondition condition
+    public ResponseEntity<WalkScheduleDto.PageResponse> getSchedules(
+            @ModelAttribute WalkScheduleDto.SearchCondition condition,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "9") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
+
         return ResponseEntity.ok(
                 walkScheduleService.getSchedules(
                         getLoginMemberId(),
-                        condition
+                        condition,
+                        pageable
                 )
         );
     }

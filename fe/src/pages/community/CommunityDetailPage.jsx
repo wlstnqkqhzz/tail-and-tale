@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/layout/Header";
+import Pagination from "../../components/common/Pagination";
 import { UserActionTrigger } from "../../components/member/UserMiniProfileModal";
 import ReportModal from "../../components/report/ReportModal";
 import {
@@ -33,6 +34,7 @@ export default function CommunityDetailPage() {
 
     const [post, setPost] = useState(null);
     const [comments, setComments] = useState([]);
+    const [commentPageInfo, setCommentPageInfo] = useState(null);
     const [commentContent, setCommentContent] = useState("");
     const [replyingCommentId, setReplyingCommentId] = useState(null);
     const [replyContent, setReplyContent] = useState("");
@@ -54,9 +56,23 @@ export default function CommunityDetailPage() {
     }, [communityPostId]);
 
     // 댓글 목록 조회
-    const fetchComments = useCallback(async () => {
-        const response = await getCommunityComments(communityPostId);
-        setComments(response.data || []);
+    const fetchComments = useCallback(async (page = 0) => {
+        let response = await getCommunityComments(communityPostId, {
+            page,
+            size: 10,
+        });
+        let responseData = response.data;
+
+        if (responseData.totalPages > 0 && page >= responseData.totalPages) {
+            response = await getCommunityComments(communityPostId, {
+                page: responseData.totalPages - 1,
+                size: 10,
+            });
+            responseData = response.data;
+        }
+
+        setComments(responseData.comments || []);
+        setCommentPageInfo(responseData);
     }, [communityPostId]);
 
     // 초기 조회
@@ -140,7 +156,7 @@ export default function CommunityDetailPage() {
             setReplyContent("");
             await Promise.all([
                 fetchPost(),
-                fetchComments(),
+                fetchComments(commentPageInfo?.totalPages || 0),
             ]);
         } catch (error) {
             console.error(error);
@@ -187,7 +203,7 @@ export default function CommunityDetailPage() {
             setReplyContent("");
             await Promise.all([
                 fetchPost(),
-                fetchComments(),
+                fetchComments(commentPageInfo?.page || 0),
             ]);
         } catch (error) {
             console.error(error);
@@ -234,7 +250,7 @@ export default function CommunityDetailPage() {
 
             setEditingCommentId(null);
             setEditingContent("");
-            await fetchComments();
+            await fetchComments(commentPageInfo?.page || 0);
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "댓글 수정에 실패했습니다.");
@@ -252,12 +268,22 @@ export default function CommunityDetailPage() {
 
             await Promise.all([
                 fetchPost(),
-                fetchComments(),
+                fetchComments(commentPageInfo?.page || 0),
             ]);
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "댓글 삭제에 실패했습니다.");
         }
+    };
+
+    // 댓글 페이지 이동
+    const handleCommentPageChange = async (nextPage) => {
+        setExpandedCommentIds(new Set());
+        setReplyingCommentId(null);
+        setReplyContent("");
+        setEditingCommentId(null);
+        setEditingContent("");
+        await fetchComments(nextPage);
     };
 
     // 게시글 신고
@@ -452,6 +478,12 @@ export default function CommunityDetailPage() {
                                     ))}
                                 </div>
                             )}
+
+                            <Pagination
+                                page={commentPageInfo?.page || 0}
+                                totalPages={commentPageInfo?.totalPages || 0}
+                                onPageChange={handleCommentPageChange}
+                            />
                         </section>
                     </section>
                 )}

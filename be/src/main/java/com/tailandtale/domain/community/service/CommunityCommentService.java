@@ -12,6 +12,7 @@ import com.tailandtale.global.exception.CommunityErrorCode;
 import com.tailandtale.global.exception.CustomException;
 import com.tailandtale.global.exception.MemberErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,16 +61,54 @@ public class CommunityCommentService {
     }
 
     // 댓글 목록 조회
-    public List<CommunityCommentDto.Response> getComments(Long memberId, Long communityPostId) {
+    public CommunityCommentDto.PageResponse getComments(
+            Long memberId,
+            Long communityPostId,
+            Pageable pageable
+    ) {
         CommunityPost post = findPost(communityPostId);
         validateVisiblePost(post, memberId);
 
         Set<Long> hiddenCommentIds = new HashSet<>();
-        return communityCommentRepository.findAllByCommunityPostIdOrderByCreatedAtAsc(communityPostId)
+        List<CommunityComment> visibleComments = communityCommentRepository
+                .findAllByCommunityPostIdOrderByCreatedAtAsc(communityPostId)
                 .stream()
                 .filter(comment -> isVisibleComment(comment, memberId, hiddenCommentIds))
-                .map(comment -> CommunityCommentDto.Response.from(comment, memberId))
                 .toList();
+
+        List<Long> rootCommentIds = visibleComments.stream()
+                .filter(comment -> comment.getParentComment() == null)
+                .map(CommunityComment::getId)
+                .toList();
+        int fromIndex = Math.min((int) pageable.getOffset(), rootCommentIds.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), rootCommentIds.size());
+        Set<Long> selectedRootIds = new HashSet<>(rootCommentIds.subList(fromIndex, toIndex));
+        int totalPages = rootCommentIds.isEmpty()
+                ? 0
+                : (int) Math.ceil((double) rootCommentIds.size() / pageable.getPageSize());
+
+        return CommunityCommentDto.PageResponse.builder()
+                .comments(visibleComments.stream()
+                        .filter(comment -> selectedRootIds.contains(findRootCommentId(comment)))
+                        .map(comment -> CommunityCommentDto.Response.from(comment, memberId))
+                        .toList())
+                .page(pageable.getPageNumber())
+                .size(pageable.getPageSize())
+                .totalElements(rootCommentIds.size())
+                .totalPages(totalPages)
+                .last(totalPages == 0 || pageable.getPageNumber() >= totalPages - 1)
+                .build();
+    }
+
+    // 답글이 속한 최상위 댓글 ID 조회
+    private Long findRootCommentId(CommunityComment comment) {
+        CommunityComment rootComment = comment;
+
+        while (rootComment.getParentComment() != null) {
+            rootComment = rootComment.getParentComment();
+        }
+
+        return rootComment.getId();
     }
 
     // 최근 내가 작성한 댓글 조회

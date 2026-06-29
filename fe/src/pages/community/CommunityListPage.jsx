@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/layout/Header";
+import Pagination from "../../components/common/Pagination";
 import { UserActionTrigger } from "../../components/member/UserMiniProfileModal";
 import { getCommunityPosts } from "../../api/community";
 import { getAccessToken } from "../../utils/token";
@@ -62,8 +63,8 @@ export default function CommunityListPage() {
             setIsLoading(true);
 
             const response = await getCommunityPosts({
-                page: 0,
-                size: 20,
+                page: params.page ?? 0,
+                size: 10,
                 ...params,
             });
 
@@ -103,13 +104,18 @@ export default function CommunityListPage() {
         const initialCategory = searchParams.get("category") || "";
         const initialSort = searchParams.get("sort") || "latest";
         const initialKeyword = searchParams.get("keyword") || "";
+        const initialPage = Math.max(Number(searchParams.get("page") || 1) - 1, 0);
 
         if (initialCategory) initialParams.category = initialCategory;
         if (initialSort) initialParams.sort = initialSort;
         if (initialKeyword.trim()) initialParams.keyword = initialKeyword.trim();
 
-        fetchPosts(initialParams);
-    }, [fetchPosts, navigate]);
+        const timerId = window.setTimeout(() => {
+            fetchPosts({ ...initialParams, page: initialPage });
+        }, 0);
+
+        return () => window.clearTimeout(timerId);
+    }, [fetchPosts, navigate, searchParams]);
 
     // 카테고리 변경
     const handleCategoryChange = (nextCategory) => {
@@ -117,7 +123,6 @@ export default function CommunityListPage() {
 
         const nextParams = buildParams({ category: nextCategory });
         setSearchParams(nextParams);
-        fetchPosts(nextParams);
     };
 
     // 정렬 변경
@@ -127,7 +132,6 @@ export default function CommunityListPage() {
 
         const nextParams = buildParams({ sort: nextSort });
         setSearchParams(nextParams);
-        fetchPosts(nextParams);
     };
 
     // 검색 실행
@@ -136,7 +140,17 @@ export default function CommunityListPage() {
 
         const nextParams = buildParams();
         setSearchParams(nextParams);
-        fetchPosts(nextParams);
+    };
+
+    // 게시글 페이지 이동
+    const handlePageChange = (nextPage) => {
+        const nextParams = buildParams();
+        const nextSearchParams = {
+            ...nextParams,
+            ...(nextPage > 0 ? { page: nextPage + 1 } : {}),
+        };
+
+        setSearchParams(nextSearchParams);
     };
 
     return (
@@ -347,6 +361,12 @@ export default function CommunityListPage() {
                             </table>
                         </div>
                     )}
+
+                    <Pagination
+                        page={pageInfo?.page || 0}
+                        totalPages={pageInfo?.totalPages || 0}
+                        onPageChange={handlePageChange}
+                    />
                 </section>
             </main>
         </>

@@ -40,8 +40,8 @@ export const toggleCommunityPostLike = (communityPostId) => {
 };
 
 // 커뮤니티 댓글 목록 조회
-export const getCommunityComments = (communityPostId) => {
-    return api.get(`/api/community/posts/${communityPostId}/comments`);
+export const getCommunityComments = (communityPostId, params) => {
+    return api.get(`/api/community/posts/${communityPostId}/comments`, { params });
 };
 
 // 커뮤니티 댓글 작성

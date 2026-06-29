@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // 커뮤니티 댓글 DTO
 
@@ -75,5 +76,17 @@ public class CommunityCommentDto {
                     .updatedAt(comment.getUpdatedAt())
                     .build();
         }
+    }
+
+    // 댓글 목록 페이지 응답 DTO
+    @Getter
+    @Builder
+    public static class PageResponse {
+        private List<Response> comments;
+        private int page;
+        private int size;
+        private long totalElements;
+        private int totalPages;
+        private boolean last;
     }
 }

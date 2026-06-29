@@ -18,6 +18,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class WalkScheduleDto {
 
@@ -201,5 +202,17 @@ public class WalkScheduleDto {
                     .reviewCount(reviewCount == null ? 0L : reviewCount)
                     .build();
         }
+    }
+
+    // 산책 일정 목록 페이지 응답 DTO
+    @Getter
+    @Builder
+    public static class PageResponse {
+        private List<DetailResponse> schedules;
+        private int page;
+        private int size;
+        private long totalElements;
+        private int totalPages;
+        private boolean last;
     }
 }

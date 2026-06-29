@@ -4,11 +4,11 @@ import com.tailandtale.domain.community.dto.CommunityCommentDto;
 import com.tailandtale.domain.community.service.CommunityCommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 // 커뮤니티 댓글 API 컨트롤러
 
@@ -35,13 +35,18 @@ public class CommunityCommentController {
 
     // 댓글 목록 조회
     @GetMapping
-    public ResponseEntity<List<CommunityCommentDto.Response>> getComments(
-            @PathVariable Long communityPostId
+    public ResponseEntity<CommunityCommentDto.PageResponse> getComments(
+            @PathVariable Long communityPostId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
+
         return ResponseEntity.ok(
                 communityCommentService.getComments(
                         getLoginMemberId(),
-                        communityPostId
+                        communityPostId,
+                        pageable
                 )
         );
     }

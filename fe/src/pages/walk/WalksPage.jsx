@@ -1,8 +1,9 @@
 // 산책 게시글 목록 페이지
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/layout/Header";
+import Pagination from "../../components/common/Pagination";
 import RegionSelect from "../../components/common/RegionSelect";
 import { InfoBadge, StatusBadge } from "../../components/walk/WalkBadges";
 import { getWalkSchedules } from "../../api/walk";
@@ -44,12 +45,20 @@ const createScheduleSearchParams = (filters) => {
     return params;
 };
 
+// 검색 조건과 현재 페이지를 URL 파라미터로 변환
+const createUrlSearchParams = (filters, page) => ({
+    ...createScheduleSearchParams(filters),
+    ...(page > 0 ? { page: page + 1 } : {}),
+});
+
 export default function WalksPage() {
     const navigate = useNavigate();
     const [urlSearchParams, setUrlSearchParams] = useSearchParams();
+    const hasLoadedRef = useRef(false);
 
     // 산책 목록 상태
     const [walkSchedules, setWalkSchedules] = useState([]);
+    const [pageInfo, setPageInfo] = useState(null);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [isSearching, setIsSearching] = useState(false);
 
@@ -57,7 +66,7 @@ export default function WalksPage() {
     const [filters, setFilters] = useState(() => createFiltersFromSearchParams(urlSearchParams));
 
     // 산책 게시글 목록 조회
-    const fetchSchedules = useCallback(async (searchParams = {}, showInitialLoading = false) => {
+    const fetchSchedules = useCallback(async (searchParams = {}, page = 0, showInitialLoading = false) => {
         try {
             if (showInitialLoading) {
                 setIsInitialLoading(true);
@@ -65,9 +74,14 @@ export default function WalksPage() {
                 setIsSearching(true);
             }
 
-            const response = await getWalkSchedules(searchParams);
+            const response = await getWalkSchedules({
+                ...searchParams,
+                page,
+                size: 9,
+            });
 
-            setWalkSchedules(response.data);
+            setWalkSchedules(response.data.schedules || []);
+            setPageInfo(response.data);
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || "산책 게시글 목록 조회에 실패했습니다.");
@@ -86,13 +100,22 @@ export default function WalksPage() {
         }
 
         const timerId = window.setTimeout(() => {
-            fetchSchedules(createScheduleSearchParams(createFiltersFromSearchParams(urlSearchParams)), true);
+            const nextFilters = createFiltersFromSearchParams(urlSearchParams);
+            const initialPage = Math.max(Number(urlSearchParams.get("page") || 1) - 1, 0);
+
+            setFilters(nextFilters);
+            fetchSchedules(
+                createScheduleSearchParams(nextFilters),
+                initialPage,
+                !hasLoadedRef.current,
+            );
+            hasLoadedRef.current = true;
         }, 0);
 
         return () => {
             window.clearTimeout(timerId);
         };
-    }, [fetchSchedules, navigate]);
+    }, [fetchSchedules, navigate, urlSearchParams]);
 
     // 필터 변경
     const handleFilterChange = (event) => {
@@ -111,14 +134,17 @@ export default function WalksPage() {
         const nextSearchParams = createScheduleSearchParams(filters);
 
         setUrlSearchParams(nextSearchParams);
-        fetchSchedules(nextSearchParams);
     };
 
     // 검색 초기화
     const resetFilters = () => {
         setFilters(initialFilters);
         setUrlSearchParams({});
-        fetchSchedules({});
+    };
+
+    // 산책 목록 페이지 이동
+    const handlePageChange = (nextPage) => {
+        setUrlSearchParams(createUrlSearchParams(filters, nextPage));
     };
 
     return (
@@ -229,7 +255,7 @@ export default function WalksPage() {
 
                     <div className="mt-8 flex items-center justify-between">
                         <p className="text-sm text-gray-500">
-                            총 <span className="font-bold text-gray-950">{walkSchedules.length}</span>개의 산책 게시글
+                            총 <span className="font-bold text-gray-950">{pageInfo?.totalElements || 0}</span>개의 산책 게시글
                         </p>
                     </div>
 
@@ -252,6 +278,12 @@ export default function WalksPage() {
                             ))}
                         </div>
                     )}
+
+                    <Pagination
+                        page={pageInfo?.page || 0}
+                        totalPages={pageInfo?.totalPages || 0}
+                        onPageChange={handlePageChange}
+                    />
                 </section>
             </main>
         </>

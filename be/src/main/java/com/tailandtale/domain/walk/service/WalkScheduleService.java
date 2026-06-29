@@ -19,6 +19,7 @@ import com.tailandtale.global.exception.DogErrorCode;
 import com.tailandtale.global.exception.MemberErrorCode;
 import com.tailandtale.global.exception.WalkScheduleErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -172,18 +173,34 @@ public class WalkScheduleService {
 
     // 산책 일정 목록 조회
     @Transactional
-    public List<WalkScheduleDto.DetailResponse> getSchedules(
+    public WalkScheduleDto.PageResponse getSchedules(
             Long memberId,
-            WalkScheduleDto.SearchCondition condition
+            WalkScheduleDto.SearchCondition condition,
+            Pageable pageable
     ) {
         completeExpiredSchedules();
 
-        return walkScheduleRepository.search(condition)
+        List<WalkScheduleDto.DetailResponse> filteredSchedules = walkScheduleRepository.search(condition)
                 .stream()
                 .filter(walkSchedule -> isVisibleToMember(walkSchedule, memberId))
                 .map(walkSchedule -> toDetailResponse(walkSchedule, memberId))
                 .filter(response -> !Boolean.TRUE.equals(condition.getRecruitableOnly()) || Boolean.TRUE.equals(response.getIsRecruitable()))
                 .toList();
+
+        int fromIndex = Math.min((int) pageable.getOffset(), filteredSchedules.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredSchedules.size());
+        int totalPages = filteredSchedules.isEmpty()
+                ? 0
+                : (int) Math.ceil((double) filteredSchedules.size() / pageable.getPageSize());
+
+        return WalkScheduleDto.PageResponse.builder()
+                .schedules(filteredSchedules.subList(fromIndex, toIndex))
+                .page(pageable.getPageNumber())
+                .size(pageable.getPageSize())
+                .totalElements(filteredSchedules.size())
+                .totalPages(totalPages)
+                .last(totalPages == 0 || pageable.getPageNumber() >= totalPages - 1)
+                .build();
     }
 
     // 산책 일정 상세 조회

@@ -121,7 +121,7 @@ export default function HomePage() {
                 setIsHomeDataLoading(true);
 
                 const [walkResponse, dogResponse, postResponse, notificationResponse] = await Promise.all([
-                    getWalkSchedules({ status: "OPEN" }),
+                    getWalkSchedules({ status: "OPEN", page: 0, size: 9 }),
                     getDogs(),
                     getCommunityPosts({ sort: "likes", size: 5 }),
                     getNotifications(),
@@ -131,7 +131,7 @@ export default function HomePage() {
                     return;
                 }
 
-                setWalkSchedules(Array.isArray(walkResponse.data) ? walkResponse.data : []);
+                setWalkSchedules(walkResponse.data?.schedules || []);
                 setDogs(Array.isArray(dogResponse.data) ? dogResponse.data : []);
                 setPopularPosts(postResponse.data?.posts || []);
                 setUnreadNotificationCount(notificationResponse.data?.unreadCount || 0);
